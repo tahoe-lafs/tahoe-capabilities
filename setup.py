@@ -1,2 +1,4 @@
 from setuptools import setup
-setup()
+setup(
+    package_data={"tahoe_capabilities": ["py.typed"]},
+)
