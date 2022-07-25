@@ -19,16 +19,6 @@ def _scrub(b: bytes) -> str:
     """
     return _b32str(sha256(b).digest()[:6])
 
-def scrubbed_string(cap: Capability) -> str:
-    scrubbed = _scrub(b"".join(cap.secrets))
-    suffix = ":".join(map(str, cap.suffix))
-    return f"S:URI:{cap.prefix}:{scrubbed}{suffix}"
-
-def danger_real_capability_string(cap: Capability) -> str:
-    secrets: str = ":".join(map(_b32str, cap.secrets))
-    suffix: str = ":".join(map(str, cap.suffix))
-    return f"URI:{cap.prefix}:{cap.secrets}{suffix}"
-
 @frozen
 class Unknown:
     prefix: str
@@ -363,6 +353,14 @@ Capability = Union[
     Unknown,
 ]
 
+def capability_from_string(s: str) -> Capability:
+    cap = _uri.from_string(s)
+    if isinstance(cap, _uri.LiteralFileURI):
+        return LiteralRead(cap.data)
+
+    _, prefix, data = s.split(":", 2)
+    return Unknown(prefix, data.encode("ascii"))
+
 def immutable_directory_from_string(s: str) -> ImmutableDirectoryReadCapability:
     cap = _uri.from_string(s)
 
@@ -484,3 +482,13 @@ class NotImmutable(ValueError):
 class NotRecognized(ValueError):
     def __init__(self, cap: object) -> None:
         super().__init__(f"Capability of unrecognized type {type(cap)}")
+
+def scrubbed_string(cap: Capability) -> str:
+    scrubbed = _scrub(b"".join(cap.secrets))
+    suffix = ":".join(map(str, cap.suffix))
+    return f"S:URI:{cap.prefix}:{scrubbed}{suffix}"
+
+def danger_real_capability_string(cap: Capability) -> str:
+    secrets: str = ":".join(map(_b32str, cap.secrets))
+    suffix: str = ":".join(map(str, cap.suffix))
+    return f"URI:{cap.prefix}:{cap.secrets}{suffix}"
