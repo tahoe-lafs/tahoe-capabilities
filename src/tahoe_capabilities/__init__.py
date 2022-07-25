@@ -1,148 +1,289 @@
+from base64 import b32encode as _b32encode
 from hashlib import sha256
 from attrs import frozen, field
 from typing import Union
-from allmydata.util.base32 import b2a as _b2a
-from allmydata.util.hashutil import ssk_readkey_hash as _ssk_readkey_hash, ssk_storage_index_hash as _ssk_storage_index_hash
+from .hashutil import ssk_readkey_hash as _ssk_readkey_hash, ssk_storage_index_hash as _ssk_storage_index_hash
 from allmydata import uri as _uri
+from typing import Tuple
 
 def _b32str(b: bytes) -> str:
-    return _b2a(b).decode("ascii")
+    """
+    Base32-encode a byte string to a text string.
+    """
+    return _b32encode(b).decode("ascii").rstrip("=").lower()
 
 def _scrub(b: bytes) -> str:
+    """
+    Compute a short cryptographic digest using the base32 alphabet.  The
+    digest is not very collision resistant due to its short length.
+    """
     return _b32str(sha256(b).digest()[:6])
 
-class LiteralRead:
-    pass
+def scrubbed_string(cap: Capability) -> str:
+    scrubbed = _scrub(b"".join(cap.secrets))
+    suffix = ":".join(map(str, cap.suffix))
+    return f"S:URI:{cap.prefix}:{scrubbed}{suffix}"
+
+def danger_real_capability_string(cap: Capability) -> str:
+    secrets: str = ":".join(map(_b32str, cap.secrets))
+    suffix: str = ":".join(map(str, cap.suffix))
+    return f"URI:{cap.prefix}:{cap.secrets}{suffix}"
 
 @frozen
-class CHKRead:
-    key: bytes = field(repr=False)
+class Unknown:
+    prefix: str
+    data: bytes
+    suffix: Tuple[str, ...] = ()
+
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return (self.data,)
+
+@frozen
+class LiteralRead:
+    data: bytes
+    prefix: str = "LIT"
+    suffix: Tuple[str, ...] = field(init=False, default=())
+
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return (self.data,)
+
+@frozen
+class LiteralDirectoryRead:
+    cap_object: LiteralRead
+    prefix: str = "DIR2-LIT"
+    suffix: Tuple[str, ...] = field(init=False, default=())
+
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return self.cap_object.secrets
+
+@frozen
+class CHKVerify:
+    storage_index: bytes
     uri_extension_hash: bytes
     needed: int
     total: int
     size: int
+    prefix: str = "CHK"
 
-    def scrubbed_string(self) -> str:
-        return f"S:URI:CHK:{_scrub(self.key + self.uri_extension_hash)}"
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return (self.storage_index, self.uri_extension_hash)
 
-    def danger_real_capability_string(self) -> str:
-        return f"URI:CHK:{_b32str(self.key)}:{_b32str(self.uri_extension_hash)}:{self.needed}:{self.total}:{self.size}"
+    @property
+    def suffix(self) -> Tuple[str, ...]:
+        return (str(self.needed), str(self.total), str(self.size))
 
+@frozen
+class CHKRead:
+    readkey: bytes = field(repr=False)
+    verifier: CHKVerify
+    prefix: str = "CHK"
 
-class CHKVerify:
-    pass
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return (self.readkey, self.verifier.uri_extension_hash)
 
+    @property
+    def suffix(self) -> Tuple[str, ...]:
+        return self.verifier.suffix
+
+@frozen
+class CHKDirectoryVerify:
+    cap_object: CHKVerify
+    prefix: str = "DIR2-CHK-Verifier"
+
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return self.cap_object.secrets
+
+    @property
+    def suffix(self) -> Tuple[str, ...]:
+        return self.cap_object.suffix
+
+@frozen
+class CHKDirectoryRead:
+    cap_object: CHKRead
+    prefix: str = "DIR2-CHK"
+
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return self.cap_object.secrets
+
+    @property
+    def suffix(self) -> Tuple[str, ...]:
+        return self.cap_object.suffix
+
+@frozen
 class SSKVerify:
-    pass
+    storage_index: bytes
+    fingerprint: bytes
+    prefix: str = "SSK-Verifier"
+    suffix: Tuple[str, ...] = field(init=False, default=())
+
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return (self.storage_index, self.fingerprint)
 
 @frozen
 class SSKRead:
     readkey: bytes = field(repr=False)
-    fingerprint: bytes
-    storage_index: bytes = field(init=False)
+    verifier: SSKVerify
+    prefix: str = "SSK-RO"
+    suffix: Tuple[str, ...] = field(init=False, default=())
 
-    @storage_index.default
-    def _storage_index_default(self) -> bytes:
-        return _ssk_storage_index_hash(self.readkey)
-
-    def scrubbed_string(self) -> str:
-        return f"S:URI:SSK-RO:{_scrub(self.readkey + self.fingerprint)}"
-
-    def danger_real_capability_string(self) -> str:
-        return f"URI:SSK-RO:{_b32str(self.readkey)}:{_b32str(self.fingerprint)}"
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return (self.readkey, self.verifier.fingerprint)
 
 @frozen
 class SSKWrite:
     writekey: bytes = field(repr=False)
-    fingerprint: bytes
-    readkey: bytes = field(init=False, repr=False)
-    storage_index: bytes = field(init=False)
+    reader: SSKRead
+    prefix: str = "SSK"
+    suffix: Tuple[str, ...] = field(init=False, default=())
 
-    @readkey.default
-    def _readkey_default(self) -> bytes:
-        return _ssk_readkey_hash(self.writekey)
-
-    @storage_index.default
-    def _storage_index_default(self) -> bytes:
-        return _ssk_storage_index_hash(self.readkey)
-
-    # Callable[[SSKWrite], SSKRead]
-    # XX naming?
-    def get_readonly(self) -> SSKRead:
-        return SSKRead(self.readkey, self.fingerprint)
-
-class MDMFVerify:
-    pass
-
-class MDMFRead:
-    pass
-
-class MDMFWrite:
-    def get_readonly(self) -> MDMFRead:
-        return MDMFRead(self.readkey, self.fingerprint)
-
-class LiteralDirectoryRead:
-    pass
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return (self.writekey, self.reader.verifier.fingerprint)
 
 @frozen
-class CHKDirectoryRead:
-    object_cap: CHKRead
-
-    def scrubbed_string(self) -> str:
-        return f"S:URI:DIR2-CHK:{_scrub(self.object_cap.key + self.object_cap.uri_extension_hash)}"
-
-    def danger_real_capability_string(self) -> str:
-        return f"URI:DIR2-CHK:{_b32str(self.object_cap.key)}:{_b32str(self.object_cap.uri_extension_hash)}:{self.object_cap.needed}:{self.object_cap.total}:{self.object_cap.size}"
-
-class CHKDirectoryVerify:
-    pass
-
 class SSKDirectoryVerify:
-    pass
+    cap_object: SSKVerify
+    prefix: str = "DIR2-Verifier"
+
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return self.cap_object.secrets
+
+    @property
+    def suffix(self) -> Tuple[str, ...]:
+        return self.cap_object.suffix
 
 @frozen
 class SSKDirectoryRead:
-    object_cap: SSKRead
+    cap_object: SSKRead
+    prefix: str = "DIR2-RO"
 
-    def scrubbed_string(self) -> str:
-        return f"S:URI:DIR2-RO:{_scrub(self.object_cap.readkey + self.object_cap.fingerprint)}"
+    @property
+    def verifier(self) -> SSKDirectoryVerify:
+        return SSKDirectoryVerify(self.cap_object.verifier)
 
-    def danger_real_capability_string(self) -> str:
-        return f"URI:DIR2-RO:{_b32str(self.object_cap.readkey)}:{_b32str(self.object_cap.fingerprint)}"
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return self.cap_object.secrets
+
+    @property
+    def suffix(self) -> Tuple[str, ...]:
+        return self.cap_object.suffix
 
 @frozen
 class SSKDirectoryWrite:
-    object_cap: SSKWrite
+    cap_object: SSKWrite
+    prefix: str = "DIR2"
 
-    def get_readonly(self) -> SSKDirectoryRead:
-        return SSKDirectoryRead(self.object_cap.get_readonly())
+    @property
+    def reader(self) -> SSKDirectoryRead:
+        return SSKDirectoryRead(self.cap_object.reader)
 
-    def scrubbed_string(self) -> str:
-        return f"S:URI:DIR2:{_scrub(self.object_cap.writekey + self.object_cap.fingerprint)}"
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return self.cap_object.secrets
 
-    def danger_real_capability_string(self) -> str:
-        return f"URI:DIR2:{_b32str(self.object_cap.writekey)}:{_b32str(self.object_cap.fingerprint)}"
+    @property
+    def suffix(self) -> Tuple[str, ...]:
+        return self.cap_object.suffix
 
+@frozen
+class MDMFVerify:
+    storage_index: bytes
+    fingerprint: bytes
+    prefix: str = "MDMF-Verifier"
+    suffix: Tuple[str, ...] = field(init=False, default=())
 
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return (self.storage_index, self.fingerprint)
+
+@frozen
+class MDMFRead:
+    readkey: bytes = field(repr=False)
+    verifier: MDMFVerify
+    prefix: str = "MDMF-RO"
+    suffix: Tuple[str, ...] = field(init=False, default=())
+
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return (self.readkey, self.verifier.fingerprint)
+
+@frozen
+class MDMFWrite:
+    writekey: bytes = field(repr=False)
+    reader: MDMFRead
+    prefix: str = "MDMF"
+    suffix: Tuple[str, ...] = field(init=False, default=())
+
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return (self.writekey, self.reader.verifier.fingerprint)
+
+@frozen
 class MDMFDirectoryVerify:
-    pass
+    cap_object: MDMFVerify
+    prefix: str = "DIR2-MDMF-Verifier"
 
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return self.cap_object.secrets
+
+    @property
+    def suffix(self) -> Tuple[str, ...]:
+        return self.cap_object.suffix
+
+@frozen
 class MDMFDirectoryRead:
-    pass
+    cap_object: MDMFRead
+    prefix: str = "DIR2-MDMF-RO"
+
+    @property
+    def verifier(self) -> MDMFDirectoryVerify:
+        return MDMFDirectoryVerify(self.cap_object.verifier)
+
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return self.cap_object.secrets
+
+    @property
+    def suffix(self) -> Tuple[str, ...]:
+        return self.cap_object.suffix
 
 @frozen
 class MDMFDirectoryWrite:
-    object_cap: MDMFWrite
+    cap_object: MDMFWrite
+    prefix: str = "DIR2-MDMF"
 
-    def get_readonly(self) -> MDMFDirectoryRead:
-        return MDMFDirectoryRead(self.object_cap.get_readonly())
+    @property
+    def reader(self) -> MDMFDirectoryRead:
+        return MDMFDirectoryRead(self.cap_object.reader)
 
-    def danger_real_capability_string(self) -> str:
-        return f"URI:DIR2-MDMF:{_b32str(self.object_cap.writekey)}:{_b32str(self.object_cap.fingerprint)}"
+    @property
+    def secrets(self) -> Tuple[bytes, ...]:
+        return self.cap_object.secrets
 
+    @property
+    def suffix(self) -> Tuple[str, ...]:
+        return self.cap_object.suffix
 
-class Unknown:
-    pass
+VerifyCapability = Union[
+    CHKVerify,
+    SSKVerify,
+    MDMFVerify,
+    CHKDirectoryVerify,
+    SSKDirectoryVerify,
+    MDMFDirectoryVerify,
+]
 
 ReadCapability = Union[
     LiteralRead,
@@ -160,15 +301,6 @@ WriteCapability = Union[
     MDMFWrite,
     SSKDirectoryWrite,
     MDMFDirectoryWrite,
-]
-
-VerifyCapability = Union[
-    CHKVerify,
-    SSKVerify,
-    MDMFVerify,
-    CHKDirectoryVerify,
-    SSKDirectoryVerify,
-    MDMFDirectoryVerify,
 ]
 
 DirectoryCapability = Union[
@@ -235,17 +367,28 @@ def immutable_directory_from_string(s: str) -> ImmutableDirectoryReadCapability:
     cap = _uri.from_string(s)
 
     if isinstance(cap, _uri.LiteralDirectoryURI):
-        return LiteralDirectoryRead()
+        return LiteralDirectoryRead(LiteralRead(cap.data))
     elif isinstance(cap, _uri.ImmutableDirectoryURI):
         o = cap._filenode_uri
-        return CHKDirectoryRead(CHKRead(o.key, o.uri_extension_hash, o.needed_shares, o.total_shares, o.size))
+        return CHKDirectoryRead(
+            CHKRead(
+                o.key,
+                CHKVerify(
+                    _ssk_storage_index_hash(o.readkey),
+                    o.uri_extension_hash,
+                    o.needed_shares,
+                    o.total_shares,
+                    o.size,
+                ),
+            ),
+        )
 
     if cap.is_mutable():
         raise NotImmutable()
     if not _uri.IDirnodeURI.providedBy(cap):
         raise NotDirectory()
 
-    raise NotRecognize(cap)
+    raise NotRecognized(cap)
 
 def readonly_directory_from_string(s: str) -> DirectoryReadCapability:
     """
@@ -259,7 +402,14 @@ def readonly_directory_from_string(s: str) -> DirectoryReadCapability:
 
     if isinstance(cap, _uri.ReadonlyDirectoryURI):
         o = cap._filenode_uri
-        return SSKDirectoryRead(SSKRead(o.readkey, o.fingerprint))
+        reader = SSKRead(
+            o.readkey,
+            SSKVerify(
+                _ssk_storage_index_hash(o.readkey),
+                o.fingerprint,
+            ),
+        )
+        return SSKDirectoryRead(reader)
     elif isinstance(cap, _uri.ReadonlyMDMFDirectoryURI):
         o = cap._filenode_uri
         return MDMFDirectoryRead(MDMFRead(o.readkey, o.fingerprint))
@@ -309,7 +459,7 @@ def writeable_directory_from_string(s: str) -> DirectoryWriteCapability:
 
     if cap.is_readonly():
         raise NotWriteable()
-    if not IDirnodeURI.providedBy(cap):
+    if not _uri.IDirnodeURI.providedBy(cap):
         raise NotDirectory()
 
     raise NotRecognized(cap)
