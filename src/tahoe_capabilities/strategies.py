@@ -1,9 +1,9 @@
-from typing import Tuple, List, TypeVar
+from typing import Tuple, List, TypeVar, Union
 from hypothesis.strategies import builds, binary, lists, integers, one_of
 from hypothesis.strategies import SearchStrategy
 
-from .hashutil import ssk_storage_index_hash as _ssk_storage_index_hash
-from . import CHKRead, CHKDirectoryRead, SSKWrite, SSKDirectoryWrite, MDMFWrite, WriteCapability, ReadCapability, LiteralRead, VerifyCapability, Capability, CHKVerify
+from .hashutil import ssk_storage_index_hash as _ssk_storage_index_hash, ssk_readkey_hash as _ssk_readkey_hash
+from . import CHKRead, CHKDirectoryRead, SSKWrite, SSKDirectoryWrite, MDMFWrite, WriteCapability, ReadCapability, LiteralRead, VerifyCapability, Capability, CHKVerify, SSKRead, MDMFRead, SSKVerify, MDMFVerify, MDMFDirectoryWrite, SSKDirectoryWrite, LiteralDirectoryRead
 
 _A = TypeVar("_A")
 
@@ -37,7 +37,7 @@ def chk_reads() -> SearchStrategy[CHKRead]:
         lambda key, uri_extension_hash, encoding: CHKRead(
             key,
             CHKVerify(
-                _ssk_storage_index_hash(o.readkey),
+                _ssk_storage_index_hash(key),
                 uri_extension_hash,
                 *encoding,
             ),
@@ -49,35 +49,62 @@ def chk_reads() -> SearchStrategy[CHKRead]:
 
 def ssk_writes() -> SearchStrategy[SSKWrite]:
     return builds(
-        SSKWrite,
+        lambda writekey, fingerprint: SSKWrite(
+            writekey,
+            SSKRead(
+                _ssk_readkey_hash(writekey),
+                SSKVerify(
+                    _ssk_storage_index_hash(_ssk_readkey_hash(writekey)),
+                    fingerprint,
+                ),
+            ),
+        ),
         binary(min_size=16, max_size=16),
         binary(min_size=32, max_size=32),
     )
 
 def mdmf_writes() -> SearchStrategy[MDMFWrite]:
     return builds(
-        MDMFWrite,
+        lambda writekey, fingerprint: MDMFWrite(
+            writekey,
+            MDMFRead(
+                _ssk_readkey_hash(writekey),
+                MDMFVerify(
+                    _ssk_storage_index_hash(_ssk_readkey_hash(writekey)),
+                    fingerprint,
+                ),
+            ),
+        ),
         binary(min_size=16, max_size=16),
         binary(min_size=32, max_size=32),
     )
 
 def verify_capabilites() -> SearchStrategy[VerifyCapability]:
-    return one_of([
+    ro = one_of([
+        # XXX CHKDirectoryVerify
         chk_reads(),
         write_capabilities().map(lambda rw: rw.reader),
-    ]).map(lambda ro: ro.verifier)
+    ])
+    def verifier(ro: Union[CHKRead, SSKRead, MDMFRead]) -> VerifyCapability:
+        return ro.verifier
+    verify = ro.map(verifier)
+    return verify
 
 def read_capabilities() -> SearchStrategy[ReadCapability]:
     return one_of([
         literal_reads(),
+        literal_reads().map(LiteralDirectoryRead),
         chk_reads(),
+        chk_reads().map(CHKDirectoryRead),
         write_capabilities().map(lambda rw: rw.reader),
     ])
 
 def write_capabilities() -> SearchStrategy[WriteCapability]:
     return one_of([
         ssk_writes(),
+        ssk_writes().map(SSKDirectoryWrite),
         mdmf_writes(),
+        mdmf_writes().map(MDMFDirectoryWrite),
     ])
 
 def capabilities() -> SearchStrategy[Capability]:
