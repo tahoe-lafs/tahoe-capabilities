@@ -46,6 +46,13 @@ __all__ = [
     # serializer.py
     "digested_capability_string",
     "danger_real_capability_string",
+
+    # predicates.py
+    "is_verify",
+    "is_read",
+    "is_write",
+    "is_mutable",
+    "is_directory",
 ]
 
 from .types import (
@@ -97,4 +104,12 @@ from .parser import (
 from .serializer import (
     digested_capability_string,
     danger_real_capability_string,
+)
+
+from .predicates import (
+    is_verify,
+    is_read,
+    is_write,
+    is_mutable,
+    is_directory,
 )
