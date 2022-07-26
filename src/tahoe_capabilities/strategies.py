@@ -2,7 +2,7 @@ from typing import Tuple, List, TypeVar, Union
 from hypothesis.strategies import builds, binary, lists, integers, one_of
 from hypothesis.strategies import SearchStrategy
 
-from .hashutil import ssk_storage_index_hash as _ssk_storage_index_hash, ssk_readkey_hash as _ssk_readkey_hash
+from .hashutil import ssk_storage_index_hash as _ssk_storage_index_hash, ssk_readkey_hash as _ssk_readkey_hash, storage_index_hash as _storage_index_hash
 from . import CHKRead, CHKDirectoryRead, SSKWrite, SSKDirectoryWrite, MDMFWrite, WriteCapability, ReadCapability, LiteralRead, VerifyCapability, Capability, CHKVerify, SSKRead, MDMFRead, SSKVerify, MDMFVerify, MDMFDirectoryWrite, SSKDirectoryWrite, LiteralDirectoryRead
 
 _A = TypeVar("_A")
@@ -37,7 +37,7 @@ def chk_reads() -> SearchStrategy[CHKRead]:
         lambda key, uri_extension_hash, encoding: CHKRead(
             key,
             CHKVerify(
-                _ssk_storage_index_hash(key),
+                _storage_index_hash(key),
                 uri_extension_hash,
                 *encoding,
             ),

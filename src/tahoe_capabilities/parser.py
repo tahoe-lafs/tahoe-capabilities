@@ -78,7 +78,7 @@ def _parse_chk_read(pieces: List[str]) -> CHKRead:
     return CHKRead(
         readkey,
         CHKVerify(
-            _ssk_storage_index_hash(readkey),
+            _storage_index_hash(readkey),
             uri_extension_hash,
             needed,
             total,
