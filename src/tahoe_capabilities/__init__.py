@@ -41,6 +41,8 @@ __all__ = [
     "writeable_from_string",
     "writeable_directory_from_string",
 
+    "readonly_directory_from_string",
+
     "capability_from_string",
 
     # serializer.py
@@ -89,6 +91,9 @@ from .types import (
     DirectoryReadCapability,
     DirectoryWriteCapability,
 
+    ImmutableReadCapability,
+    ImmutableDirectoryReadCapability,
+
     Capability,
 )
 
@@ -96,6 +101,11 @@ from .parser import (
     NotRecognized,
 
     writeable_from_string,
+
+    immutable_readonly_from_string,
+
+    immutable_directory_from_string,
+    readonly_directory_from_string,
     writeable_directory_from_string,
 
     capability_from_string,

@@ -2,8 +2,8 @@ from base64 import b32encode as _b32encode, b32decode as _b32decode
 from hashlib import sha256
 from attrs import frozen, field
 from typing import Union, Dict, Callable, List, Type, TypeVar
-from .hashutil import ssk_readkey_hash as _ssk_readkey_hash, ssk_storage_index_hash as _ssk_storage_index_hash
-from typing import Tuple
+from .hashutil import ssk_readkey_hash as _ssk_readkey_hash, ssk_storage_index_hash as _ssk_storage_index_hash, storage_index_hash as _storage_index_hash
+from typing import Tuple, cast
 
 from .types import (
     LiteralRead,
@@ -39,6 +39,7 @@ from .types import (
     DirectoryReadCapability,
     DirectoryWriteCapability,
 
+    ImmutableReadCapability,
     ImmutableDirectoryReadCapability,
 
     Capability,
@@ -131,14 +132,6 @@ def _parse_dir2_mdmf_read(pieces: List[str]) -> MDMFDirectoryRead:
 def _parse_dir2_mdmf_verify(pieces: List[str]) -> MDMFDirectoryVerify:
     return MDMFDirectoryVerify(_parse_mdmf_verify(pieces))
 
-def writeable_from_string(s: str) -> WriteCapability:
-    return _uri_parser(s, {
-        "SSK": _parse_ssk_write,
-        "MDMF": _parse_mdmf_write,
-        "DIR2": _parse_dir2_ssk_write,
-        "DIR2-MDMF": _parse_dir2_mdmf_write,
-    })
-
 def _parse_ssk_write(pieces: List[str]) -> SSKWrite:
     writekey = _unb32str(pieces[0])
     fingerprint = _unb32str(pieces[1])
@@ -158,38 +151,6 @@ def _parse_mdmf_write(pieces: List[str]) -> MDMFWrite:
 
 def _parse_dir2_mdmf_write(pieces: List[str]) -> MDMFDirectoryWrite:
     return MDMFDirectoryWrite(_parse_mdmf_write(pieces))
-
-def immutable_directory_from_string(s: str) -> ImmutableDirectoryReadCapability:
-    return _uri_parser(s, {
-        "DIR2-LIT": _parse_dir2_literal_read,
-        "DIR2-CHK": _parse_dir2_chk_read,
-    })
-
-def readonly_directory_from_string(s: str) -> DirectoryReadCapability:
-    """
-    Parse a capability string into a read capability for a mutable
-    directory.
-
-    :raise ValueError: If the string represents a capability that is not
-        read-only, is not for a mutable, or is not for a directory.
-    """
-    return _uri_parser(s, {
-        "DIR2-RO": _parse_dir2_ssk_read,
-        "DIR2-MDMF-RO": _parse_dir2_mdmf_read,
-    })
-
-def writeable_directory_from_string(s: str) -> DirectoryWriteCapability:
-    """
-    Parse a capability string into a write capability for a mutable
-    directory.
-
-    :raise ValueError: If the string represents a capability that is writeable
-        or is not for a directory.
-    """
-    return _uri_parser(s, {
-        "DIR2": _parse_dir2_ssk_write,
-        "DIR2-MDMF": _parse_dir2_mdmf_write,
-    })
 
 _parsers: Dict[str, Callable[[List[str]], Capability]] = {
     "LIT": _parse_literal,
@@ -219,14 +180,6 @@ _parsers: Dict[str, Callable[[List[str]], Capability]] = {
     "DIR2-MDMF": _parse_dir2_mdmf_write,
 }
 
-def capability_from_string(s: str) -> Capability:
-    pieces = s.split(":")
-    if pieces[0] == "URI":
-        parser = _parsers[pieces[1]]
-        return parser(pieces[2:])
-
-    raise NotRecognized(pieces[:1])
-
 _A = TypeVar("_A")
 
 def _uri_parser(s: str, parsers: Dict[str, Callable[[List[str]], _A]]) -> _A:
@@ -238,4 +191,59 @@ def _uri_parser(s: str, parsers: Dict[str, Callable[[List[str]], _A]]) -> _A:
             raise NotRecognized(pieces[:2])
         else:
             return parser(pieces[2:])
+    raise NotRecognized(pieces[:1])
+
+def writeable_from_string(s: str) -> WriteCapability:
+    return cast(WriteCapability, _uri_parser(s, {
+        "SSK": _parse_ssk_write,
+        "MDMF": _parse_mdmf_write,
+        "DIR2": _parse_dir2_ssk_write,
+        "DIR2-MDMF": _parse_dir2_mdmf_write,
+    }))
+
+
+def immutable_readonly_from_string(s: str) -> ImmutableReadCapability:
+    return cast(ImmutableReadCapability, _uri_parser(s, {
+        "LIT": _parse_literal,
+        "CHK": _parse_chk_read,
+    }))
+
+def immutable_directory_from_string(s: str) -> ImmutableDirectoryReadCapability:
+    return cast(ImmutableDirectoryReadCapability, _uri_parser(s, {
+        "DIR2-LIT": _parse_dir2_literal_read,
+        "DIR2-CHK": _parse_dir2_chk_read,
+    }))
+
+def readonly_directory_from_string(s: str) -> DirectoryReadCapability:
+    """
+    Parse a capability string into a read capability for a mutable
+    directory.
+
+    :raise ValueError: If the string represents a capability that is not
+        read-only, is not for a mutable, or is not for a directory.
+    """
+    return cast(DirectoryReadCapability, _uri_parser(s, {
+        "DIR2-RO": _parse_dir2_ssk_read,
+        "DIR2-MDMF-RO": _parse_dir2_mdmf_read,
+    }))
+
+def writeable_directory_from_string(s: str) -> DirectoryWriteCapability:
+    """
+    Parse a capability string into a write capability for a mutable
+    directory.
+
+    :raise ValueError: If the string represents a capability that is writeable
+        or is not for a directory.
+    """
+    return cast(DirectoryWriteCapability, _uri_parser(s, {
+        "DIR2": _parse_dir2_ssk_write,
+        "DIR2-MDMF": _parse_dir2_mdmf_write,
+    }))
+
+def capability_from_string(s: str) -> Capability:
+    pieces = s.split(":")
+    if pieces[0] == "URI":
+        parser = _parsers[pieces[1]]
+        return parser(pieces[2:])
+
     raise NotRecognized(pieces[:1])
