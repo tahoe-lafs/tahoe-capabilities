@@ -49,6 +49,18 @@ class CHKRead:
     prefix: str = "CHK"
 
     @property
+    def needed(self):
+        return self.verifier.needed
+
+    @property
+    def total(self):
+        return self.verifier.total
+
+    @property
+    def size(self):
+        return self.verifier.size
+
+    @property
     def secrets(self) -> Tuple[bytes, ...]:
         return (self.readkey, self.verifier.uri_extension_hash)
 
