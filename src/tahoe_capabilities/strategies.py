@@ -81,8 +81,8 @@ def mdmf_writes() -> SearchStrategy[MDMFWrite]:
 
 def verify_capabilites() -> SearchStrategy[VerifyCapability]:
     ro = one_of([
-        # XXX CHKDirectoryVerify
         chk_reads(),
+        chk_reads().map(CHKDirectoryRead),
         write_capabilities().map(lambda rw: rw.reader),
     ])
     def verifier(ro: Union[CHKRead, SSKRead, MDMFRead]) -> VerifyCapability:
