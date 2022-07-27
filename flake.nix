@@ -32,7 +32,7 @@
       defaultPythonVersion = "python39";
 
       # the Python versions for which packages are available
-      supportedPythonVersions = ["python37" "python38" "python39" "python310" "python311"];
+      supportedPythonVersions = ["python37" "python38" "python39"];
 
     in rec {
       packages =
