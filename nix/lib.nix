@@ -51,7 +51,14 @@ rec {
     mach-nix.lib.${system}.mkPython {
       python = pythonVersion;
       inherit ((packageForVersion extras pythonVersion).meta.mach-nix) providers _;
-      requirements = requirementsForVersion extras pythonVersion;
+      requirements = ''
+        ${requirementsForVersion extras pythonVersion}
+
+        # These must live in the same Python environment as all of our
+        # dependencies or mypy cannot resolve imports properly.
+        mypy
+        mypy-zope
+      '';
     };
 
   # Create a shell derivation for a development environment for
@@ -62,7 +69,15 @@ rec {
   devShellForVersion = extras: pythonVersion:
     pkgs.mkShell {
       shellHook = "export PYTHONPATH=\${PWD}/src:\${PYTHONPATH}";
-      buildInputs = [ (devPy extras pythonVersion) ];
+      buildInputs = [
+        (devPy extras pythonVersion)
+        # Outside of the Python environment, a couple other helpful tools.
+        # They happen to be implemented in Python but we don't want or need
+        # them in our Python import path.
+        pkgs.black
+        pkgs.python3Packages.isort
+        pkgs.python3Packages.flake8
+      ];
     };
 
   # Create development environments for all of the given Python versions.  In

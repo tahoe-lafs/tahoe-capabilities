@@ -4,11 +4,8 @@ buildPythonPackage rec {
   python = pythonVersion;
   version = "2022.7.26";
   inherit extras;
-
+  providers = {};
   _ = {};
-  providers = {
-    default = "nixpkgs,wheel,sdist";
-  };
   passthru.meta.mach-nix = {
     inherit providers _;
   };
