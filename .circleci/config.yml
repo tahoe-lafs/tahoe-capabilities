@@ -19,8 +19,7 @@ jobs:
   codechecks:
     docker:
       # Run in a highly Nix-capable environment.
-      - <<: *DOCKERHUB_AUTH
-        image: "nixos/nix:2.9.1"
+      image: "nixos/nix:2.9.1"
 
     steps:
       - "run":
