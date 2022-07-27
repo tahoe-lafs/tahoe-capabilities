@@ -1,0 +1,14 @@
+# Backup files
+*~
+
+# Hypothesis example database
+/.hypothesis
+
+# Bytecode cache directories
+__pycache__
+
+# Generated packaging metadata
+*.egg-info
+
+# nix build result
+/result
