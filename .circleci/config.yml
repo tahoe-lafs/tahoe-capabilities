@@ -20,6 +20,12 @@ jobs:
       # Run in a highly Nix-capable environment.
       - image: "nixos/nix:2.9.1"
 
+    environment:
+      # CACHIX_AUTH_TOKEN is manually set in the CircleCI web UI and
+      # allows us to push to CACHIX_NAME.  We only need this set for
+      # `cachix use` in this step.
+      CACHIX_NAME: "tahoe-lafs-opensource"
+
     steps:
       - "run":
           name: "Install Basic Dependencies"
