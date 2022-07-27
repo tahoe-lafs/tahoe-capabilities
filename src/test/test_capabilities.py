@@ -94,7 +94,7 @@ class VectorTests(TestCase):
         ("reader",   MDMF_DIR2,    reader,   MDMF_DIR2_RO),
     ])
 
-    def test_vector(self):
+    def test_vector(self) -> None:
         for index, (description, start, transform, expected) in self.vector:
             self.assertEqual(
                 danger_real_capability_string(transform(capability_from_string(start))),

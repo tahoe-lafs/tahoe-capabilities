@@ -49,15 +49,15 @@ class CHKRead:
     prefix: str = "CHK"
 
     @property
-    def needed(self):
+    def needed(self) -> int:
         return self.verifier.needed
 
     @property
-    def total(self):
+    def total(self) -> int:
         return self.verifier.total
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self.verifier.size
 
     @property
