@@ -40,7 +40,7 @@ jobs:
             mkdir -p ~/.config/nix
             echo "experimental-features = nix-command flakes" > ~/.config/nix/nix.conf
 
-      - run:
+      - "run":
           name: "Cachix setup"
           # Record the store paths that exist before we did much.  There's no
           # reason to cache these, they're either in the image or have to be
