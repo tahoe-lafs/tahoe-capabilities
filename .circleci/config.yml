@@ -46,17 +46,17 @@ jobs:
       - "run":
           name: "isort"
           command: |
-            nix develop --command isort src'
+            nix develop --command isort src
 
       - "run":
           name: "black"
           command: |
-            nix develop --command 'black src'
+            nix develop --command black src
 
       - "run":
           name: "mypy"
           command: |
-            nix develop --command mypy --strict src'
+            nix develop --command mypy --strict src
 
   unittests:
     parameters:
