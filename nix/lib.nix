@@ -100,7 +100,7 @@ rec {
     pkgs.callPackage ./tests.nix {
       inherit pythonVersion;
       inherit (mach-nix.lib.${system}) mkPython;
-      tahoe-lafs = packageForVersion (extras ++ [ "test" ]) pythonVersion;
+      tahoe-capabilities = packageForVersion (extras ++ [ "test" ]) pythonVersion;
     };
 
   # Create derivations that run the automated test suite.
