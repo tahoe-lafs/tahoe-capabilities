@@ -1,0 +1,119 @@
+version: "2.1"
+
+workflows:
+  ci:
+    jobs:
+      - "unittests":
+          matrix:
+            parameters:
+              python:
+                - "python37"
+                - "python38"
+                - "python39"
+                - "python310"
+
+      - "codechecks":
+          {}
+
+jobs:
+  codechecks:
+    docker:
+      # Run in a highly Nix-capable environment.
+      - <<: *DOCKERHUB_AUTH
+        image: "nixos/nix:2.9.1"
+
+    steps:
+      - "run":
+          name: "Install Basic Dependencies"
+          command: |
+            # The nixos/nix image does not include ssh.  Install it so the
+            # `checkout` step will succeed.  We also want cachix for
+            # Nix-friendly caching.  We only use these tools for setting up
+            # the build environment so the exact version of nixos/nixpkgs we
+            # use doesn't matter a whole lot.  The inputs for the real build
+            # are pinned elsewhere.
+            nix-env \
+              --file https://github.com/nixos/nixpkgs/archive/nixos-22.05.tar.gz \
+              --install \
+              -A openssh cachix bash
+
+            # We also want to use flakes but they're still experimental so
+            # turn them on.
+            mkdir -p ~/.config/nix
+            echo "experimental-features = nix-command flakes" > ~/.config/nix/nix.conf
+
+      - "checkout"
+
+      - "run":
+          name: "isort"
+          command: |
+            nix develop --command isort src'
+
+      - "run":
+          name: "black"
+          command: |
+            nix develop --command 'black src'
+
+      - "run":
+          name: "mypy"
+          command: |
+            nix develop --command mypy --strict src'
+
+  unittests:
+    parameters:
+      python:
+        description: >-
+          Reference the name of the Python package to build and test against.
+        type: "string"
+    docker:
+      # Run in a highly Nix-capable environment.
+      - <<: *DOCKERHUB_AUTH
+        image: "nixos/nix:2.9.1"
+
+    environment:
+      # CACHIX_AUTH_TOKEN is manually set in the CircleCI web UI and
+      # allows us to push to CACHIX_NAME.  We only need this set for
+      # `cachix use` in this step.
+      CACHIX_NAME: "tahoe-lafs-opensource"
+
+    steps:
+      - "run":
+          name: "Install Basic Dependencies"
+          command: |
+            # The nixos/nix image does not include ssh.  Install it so the
+            # `checkout` step will succeed.  We also want cachix for
+            # Nix-friendly caching.  We only use these tools for setting up
+            # the build environment so the exact version of nixos/nixpkgs we
+            # use doesn't matter a whole lot.  The inputs for the real build
+            # are pinned elsewhere.
+            nix-env \
+              --file https://github.com/nixos/nixpkgs/archive/nixos-22.05.tar.gz \
+              --install \
+              -A openssh cachix bash
+
+            # We also want to use flakes but they're still experimental so
+            # turn them on.
+            mkdir -p ~/.config/nix
+            echo "experimental-features = nix-command flakes" > ~/.config/nix/nix.conf
+
+      - "checkout"
+
+      - "run":
+          name: "Build"
+          command: |
+            nix build .#tahoe-capabilities-<<parameters.python>>
+
+      - "run":
+          name: "Test"
+          command: |
+            nix build .#tahoe-capabilities-<<parameters.python>>-tests
+
+      - run:
+          # Send any new store objects to cachix.
+          name: "Push to Cachix"
+          when: "always"
+          command: |
+            # Use ./result from the previous step
+            nix-store -qR --include-outputs $(nix-store -qd ./result) \
+                | grep -v '\.drv$' \
+                | cachix push $CACHIX_NAME
