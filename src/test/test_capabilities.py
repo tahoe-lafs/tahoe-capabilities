@@ -1,9 +1,16 @@
-from unittest import TestCase
-from hypothesis import given, assume
 from operator import attrgetter
+from unittest import TestCase
 
+from hypothesis import assume, given
+
+from tahoe_capabilities import (
+    Capability,
+    capability_from_string,
+    danger_real_capability_string,
+    digested_capability_string,
+)
 from tahoe_capabilities.strategies import capabilities
-from tahoe_capabilities import Capability, danger_real_capability_string, capability_from_string, digested_capability_string
+
 
 class ParseTests(TestCase):
     maxDiff = None
@@ -31,7 +38,9 @@ class ParseTests(TestCase):
         self.assertNotEqual(real, digested)
 
     @given(capabilities(), capabilities())
-    def test_digested_capability_string_distinct(self, cap_a: Capability, cap_b: Capability) -> None:
+    def test_digested_capability_string_distinct(
+        self, cap_a: Capability, cap_b: Capability
+    ) -> None:
         """
         Two different capabilities produce different outputs from
         ``digested_capability_string``.
@@ -54,11 +63,13 @@ class ParseTests(TestCase):
 verifier = attrgetter("verifier")
 reader = attrgetter("reader")
 
+
 class VectorTests(TestCase):
     """
     Test Tahoe-Capabilities behavior on hard-coded values against
     known-correct test vectors extracted from Tahoe-LAFS.
     """
+
     # raw values from build_test_vector.sh
     CHK = "URI:CHK:intrb3iinc7ushk6krxnbqrvfm:iyi4bqhr45ib4hzyvuv2tdifoqgt7enpavd7szdpiadxoxz6mkrq:1:3:120"
     CHK_VERIFY = "URI:CHK-Verifier:6iimmnn2zkv6uan23ehz3l2zdm:iyi4bqhr45ib4hzyvuv2tdifoqgt7enpavd7szdpiadxoxz6mkrq:1:3:120"
@@ -81,18 +92,19 @@ class VectorTests(TestCase):
     MDMF_DIR2_RO = "URI:DIR2-MDMF-RO:q67pk7haitbdklvahedujy2pt4:3sspyogz6whnekcda4yd6zv7xrzx2ylwuexxsgrlp6psnzrkocqq"
     MDMF_DIR2_VERIFY = "URI:DIR2-MDMF-Verifier:plcl33iztk3z3ii6rumj3pw7ma:3sspyogz6whnekcda4yd6zv7xrzx2ylwuexxsgrlp6psnzrkocqq"
 
-    vector = enumerate([
-        ("verifier", CHK,          verifier, CHK_VERIFY),
-        ("verifier", SSK_RO,       verifier, SSK_VERIFY),
-        ("verifier", SSK_DIR2_RO,  verifier, SSK_DIR2_VERIFY),
-        ("verifier", MDMF_RO,      verifier, MDMF_VERIFY),
-        ("verifier", MDMF_DIR2_RO, verifier, MDMF_DIR2_VERIFY),
-
-        ("reader",   SSK,          reader,   SSK_RO),
-        ("reader",   SSK_DIR2,     reader,   SSK_DIR2_RO),
-        ("reader",   MDMF,         reader,   MDMF_RO),
-        ("reader",   MDMF_DIR2,    reader,   MDMF_DIR2_RO),
-    ])
+    vector = enumerate(
+        [
+            ("verifier", CHK, verifier, CHK_VERIFY),
+            ("verifier", SSK_RO, verifier, SSK_VERIFY),
+            ("verifier", SSK_DIR2_RO, verifier, SSK_DIR2_VERIFY),
+            ("verifier", MDMF_RO, verifier, MDMF_VERIFY),
+            ("verifier", MDMF_DIR2_RO, verifier, MDMF_DIR2_VERIFY),
+            ("reader", SSK, reader, SSK_RO),
+            ("reader", SSK_DIR2, reader, SSK_DIR2_RO),
+            ("reader", MDMF, reader, MDMF_RO),
+            ("reader", MDMF_DIR2, reader, MDMF_DIR2_RO),
+        ]
+    )
 
     def test_vector(self) -> None:
         for index, (description, start, transform, expected) in self.vector:

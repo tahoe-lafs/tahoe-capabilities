@@ -2,9 +2,9 @@
 Hashing utilities.
 """
 
-from typing import Optional
-import os
 import hashlib
+import os
+from typing import Optional
 
 # Be very very cautious when modifying this file. Almost any change will cause
 # a compatibility break, invalidating all outstanding URIs and making any
@@ -16,13 +16,18 @@ import hashlib
 # encryption keys.
 CRYPTO_VAL_SIZE = 32
 
+
 def netstring(s: bytes) -> bytes:
-    return b"%d:%s," % (len(s), s,)
+    return b"%d:%s," % (
+        len(s),
+        s,
+    )
+
 
 class _SHA256d_Hasher(object):
     # use SHA-256d, as defined by Ferguson and Schneier: hash the output
     # again to prevent length-extension attacks
-    def __init__(self, truncate_to:Optional[int]=None) -> None:
+    def __init__(self, truncate_to: Optional[int] = None) -> None:
         self.h = hashlib.sha256()
         self.truncate_to = truncate_to
         self._digest: Optional[bytes] = None
@@ -36,29 +41,32 @@ class _SHA256d_Hasher(object):
             del self.h
             h2 = hashlib.sha256(h1).digest()
             if self.truncate_to:
-                h2 = h2[:self.truncate_to]
+                h2 = h2[: self.truncate_to]
             self._digest = h2
         return self._digest
 
 
-def tagged_hasher(tag: bytes, truncate_to:Optional[int]=None)->_SHA256d_Hasher:
+def tagged_hasher(tag: bytes, truncate_to: Optional[int] = None) -> _SHA256d_Hasher:
     hasher = _SHA256d_Hasher(truncate_to)
     hasher.update(netstring(tag))
     return hasher
 
 
-def tagged_hash(tag: bytes, val: bytes, truncate_to:Optional[int]=None) -> bytes:
+def tagged_hash(tag: bytes, val: bytes, truncate_to: Optional[int] = None) -> bytes:
     hasher = tagged_hasher(tag, truncate_to)
     hasher.update(val)
     return hasher.digest()
 
 
-def tagged_pair_hash(tag: bytes, val1: bytes, val2: bytes, truncate_to:Optional[int]=None) -> bytes:
+def tagged_pair_hash(
+    tag: bytes, val1: bytes, val2: bytes, truncate_to: Optional[int] = None
+) -> bytes:
     s = _SHA256d_Hasher(truncate_to)
     s.update(netstring(tag))
     s.update(netstring(val1))
     s.update(netstring(val2))
     return s.digest()
+
 
 # specific hash tags that we use
 
@@ -82,15 +90,21 @@ BUCKET_CANCEL_TAG = b"allmydata_bucket_cancel_secret_v1"
 
 # mutable
 MUTABLE_WRITEKEY_TAG = b"allmydata_mutable_privkey_to_writekey_v1"
-MUTABLE_WRITE_ENABLER_MASTER_TAG = b"allmydata_mutable_writekey_to_write_enabler_master_v1"
-MUTABLE_WRITE_ENABLER_TAG = b"allmydata_mutable_write_enabler_master_and_nodeid_to_write_enabler_v1"
+MUTABLE_WRITE_ENABLER_MASTER_TAG = (
+    b"allmydata_mutable_writekey_to_write_enabler_master_v1"
+)
+MUTABLE_WRITE_ENABLER_TAG = (
+    b"allmydata_mutable_write_enabler_master_and_nodeid_to_write_enabler_v1"
+)
 MUTABLE_PUBKEY_TAG = b"allmydata_mutable_pubkey_to_fingerprint_v1"
 MUTABLE_READKEY_TAG = b"allmydata_mutable_writekey_to_readkey_v1"
 MUTABLE_DATAKEY_TAG = b"allmydata_mutable_readkey_to_datakey_v1"
 MUTABLE_STORAGEINDEX_TAG = b"allmydata_mutable_readkey_to_storage_index_v1"
 
 # dirnodes
-DIRNODE_CHILD_WRITECAP_TAG = b"allmydata_mutable_writekey_and_salt_to_dirnode_child_capkey_v1"
+DIRNODE_CHILD_WRITECAP_TAG = (
+    b"allmydata_mutable_writekey_and_salt_to_dirnode_child_capkey_v1"
+)
 DIRNODE_CHILD_SALT_TAG = b"allmydata_dirnode_child_rwcap_to_salt_v1"
 
 
@@ -155,13 +169,15 @@ KEYLEN = 16
 IVLEN = 16
 
 
-def convergence_hash(k: int, n: int, segsize: int, data: bytes, convergence: bytes) -> bytes:
+def convergence_hash(
+    k: int, n: int, segsize: int, data: bytes, convergence: bytes
+) -> bytes:
     h = convergence_hasher(k, n, segsize, convergence)
     h.update(data)
     return h.digest()
 
 
-def _convergence_hasher_tag(k: int, n: int, segsize: int, convergence: bytes)->bytes:
+def _convergence_hasher_tag(k: int, n: int, segsize: int, convergence: bytes) -> bytes:
     """
     Create the convergence hashing tag.
 
@@ -197,7 +213,9 @@ def _convergence_hasher_tag(k: int, n: int, segsize: int, convergence: bytes)->b
     return tag
 
 
-def convergence_hasher(k: int, n: int, segsize: int, convergence: bytes) -> _SHA256d_Hasher:
+def convergence_hasher(
+    k: int, n: int, segsize: int, convergence: bytes
+) -> _SHA256d_Hasher:
     tag = _convergence_hasher_tag(k, n, segsize, convergence)
     return tagged_hasher(tag, KEYLEN)
 
@@ -214,14 +232,14 @@ def my_cancel_secret_hash(my_secret: bytes) -> bytes:
     return tagged_hash(my_secret, CLIENT_CANCEL_TAG)
 
 
-def file_renewal_secret_hash(client_renewal_secret: bytes, storage_index: bytes) -> bytes:
-    return tagged_pair_hash(FILE_RENEWAL_TAG,
-                            client_renewal_secret, storage_index)
+def file_renewal_secret_hash(
+    client_renewal_secret: bytes, storage_index: bytes
+) -> bytes:
+    return tagged_pair_hash(FILE_RENEWAL_TAG, client_renewal_secret, storage_index)
 
 
 def file_cancel_secret_hash(client_cancel_secret: bytes, storage_index: bytes) -> bytes:
-    return tagged_pair_hash(FILE_CANCEL_TAG,
-                            client_cancel_secret, storage_index)
+    return tagged_pair_hash(FILE_CANCEL_TAG, client_cancel_secret, storage_index)
 
 
 def bucket_renewal_secret_hash(file_renewal_secret: bytes, peerid: bytes) -> bytes:
@@ -240,7 +258,7 @@ def _xor(a: bytes, b: int) -> bytes:
 
 def hmac(tag: bytes, data: bytes) -> bytes:
     ikey = _xor(tag, 0x36)
-    okey = _xor(tag, 0x5c)
+    okey = _xor(tag, 0x5C)
     h1 = hashlib.sha256(ikey + data).digest()
     h2 = hashlib.sha256(okey + h1).digest()
     return h2
@@ -296,5 +314,7 @@ def backupdb_dirhash(contents: bytes) -> bytes:
     return tagged_hash(BACKUPDB_DIRHASH_TAG, contents)
 
 
-def permute_server_hash(peer_selection_index: bytes, server_permutation_seed: bytes) -> bytes:
+def permute_server_hash(
+    peer_selection_index: bytes, server_permutation_seed: bytes
+) -> bytes:
     return hashlib.sha1(peer_selection_index + server_permutation_seed).digest()

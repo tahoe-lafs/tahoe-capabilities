@@ -1,11 +1,8 @@
-from base64 import b32encode as _b32encode, b32decode as _b32decode
+from base64 import b32encode as _b32encode
 from hashlib import shake_128
-from attrs import frozen, field
-from typing import Union, Dict, Callable, List, Type, TypeVar
-from .hashutil import ssk_readkey_hash as _ssk_readkey_hash, ssk_storage_index_hash as _ssk_storage_index_hash
-from typing import Tuple
 
 from .types import Capability
+
 
 def _b32str(b: bytes) -> str:
     """
@@ -13,12 +10,14 @@ def _b32str(b: bytes) -> str:
     """
     return _b32encode(b).decode("ascii").rstrip("=").lower()
 
+
 def _scrub(b: bytes) -> str:
     """
     Compute a short cryptographic digest using the base32 alphabet.  The
     digest is not particularly collision resistant due to its short length.
     """
     return _b32str(shake_128(b).digest(8))
+
 
 def digested_capability_string(cap: Capability) -> str:
     """
@@ -35,6 +34,7 @@ def digested_capability_string(cap: Capability) -> str:
     if suffix:
         suffix = ":" + suffix
     return f"D:URI:{cap.prefix}:{scrubbed}{suffix}"
+
 
 def danger_real_capability_string(cap: Capability) -> str:
     """

@@ -1,9 +1,7 @@
-from base64 import b32encode as _b32encode, b32decode as _b32decode
-from hashlib import sha256
-from attrs import frozen, field
-from typing import Union, Dict, Callable, List, Type, TypeVar
-from .hashutil import ssk_readkey_hash as _ssk_readkey_hash, ssk_storage_index_hash as _ssk_storage_index_hash
-from typing import Tuple
+from typing import Tuple, Union
+
+from attrs import field, frozen
+
 
 @frozen
 class LiteralRead:
@@ -15,6 +13,7 @@ class LiteralRead:
     def secrets(self) -> Tuple[bytes, ...]:
         return (self.data,)
 
+
 @frozen
 class LiteralDirectoryRead:
     cap_object: LiteralRead
@@ -24,6 +23,7 @@ class LiteralDirectoryRead:
     @property
     def secrets(self) -> Tuple[bytes, ...]:
         return self.cap_object.secrets
+
 
 @frozen
 class CHKVerify:
@@ -41,6 +41,7 @@ class CHKVerify:
     @property
     def suffix(self) -> Tuple[str, ...]:
         return (str(self.needed), str(self.total), str(self.size))
+
 
 @frozen
 class CHKRead:
@@ -68,6 +69,7 @@ class CHKRead:
     def suffix(self) -> Tuple[str, ...]:
         return self.verifier.suffix
 
+
 @frozen
 class CHKDirectoryVerify:
     cap_object: CHKVerify
@@ -80,6 +82,7 @@ class CHKDirectoryVerify:
     @property
     def suffix(self) -> Tuple[str, ...]:
         return self.cap_object.suffix
+
 
 @frozen
 class CHKDirectoryRead:
@@ -98,6 +101,7 @@ class CHKDirectoryRead:
     def suffix(self) -> Tuple[str, ...]:
         return self.cap_object.suffix
 
+
 @frozen
 class SSKVerify:
     storage_index: bytes
@@ -108,6 +112,7 @@ class SSKVerify:
     @property
     def secrets(self) -> Tuple[bytes, ...]:
         return (self.storage_index, self.fingerprint)
+
 
 @frozen
 class SSKRead:
@@ -120,6 +125,7 @@ class SSKRead:
     def secrets(self) -> Tuple[bytes, ...]:
         return (self.readkey, self.verifier.fingerprint)
 
+
 @frozen
 class SSKWrite:
     writekey: bytes = field(repr=False)
@@ -130,6 +136,7 @@ class SSKWrite:
     @property
     def secrets(self) -> Tuple[bytes, ...]:
         return (self.writekey, self.reader.verifier.fingerprint)
+
 
 @frozen
 class SSKDirectoryVerify:
@@ -143,6 +150,7 @@ class SSKDirectoryVerify:
     @property
     def suffix(self) -> Tuple[str, ...]:
         return self.cap_object.suffix
+
 
 @frozen
 class SSKDirectoryRead:
@@ -161,6 +169,7 @@ class SSKDirectoryRead:
     def suffix(self) -> Tuple[str, ...]:
         return self.cap_object.suffix
 
+
 @frozen
 class SSKDirectoryWrite:
     cap_object: SSKWrite
@@ -178,6 +187,7 @@ class SSKDirectoryWrite:
     def suffix(self) -> Tuple[str, ...]:
         return self.cap_object.suffix
 
+
 @frozen
 class MDMFVerify:
     storage_index: bytes
@@ -188,6 +198,7 @@ class MDMFVerify:
     @property
     def secrets(self) -> Tuple[bytes, ...]:
         return (self.storage_index, self.fingerprint)
+
 
 @frozen
 class MDMFRead:
@@ -200,6 +211,7 @@ class MDMFRead:
     def secrets(self) -> Tuple[bytes, ...]:
         return (self.readkey, self.verifier.fingerprint)
 
+
 @frozen
 class MDMFWrite:
     writekey: bytes = field(repr=False)
@@ -210,6 +222,7 @@ class MDMFWrite:
     @property
     def secrets(self) -> Tuple[bytes, ...]:
         return (self.writekey, self.reader.verifier.fingerprint)
+
 
 @frozen
 class MDMFDirectoryVerify:
@@ -223,6 +236,7 @@ class MDMFDirectoryVerify:
     @property
     def suffix(self) -> Tuple[str, ...]:
         return self.cap_object.suffix
+
 
 @frozen
 class MDMFDirectoryRead:
@@ -241,6 +255,7 @@ class MDMFDirectoryRead:
     def suffix(self) -> Tuple[str, ...]:
         return self.cap_object.suffix
 
+
 @frozen
 class MDMFDirectoryWrite:
     cap_object: MDMFWrite
@@ -257,6 +272,7 @@ class MDMFDirectoryWrite:
     @property
     def suffix(self) -> Tuple[str, ...]:
         return self.cap_object.suffix
+
 
 VerifyCapability = Union[
     CHKVerify,

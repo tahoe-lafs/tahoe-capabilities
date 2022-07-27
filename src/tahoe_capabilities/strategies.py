@@ -1,11 +1,39 @@
-from typing import Tuple, List, TypeVar, Union
-from hypothesis.strategies import builds, binary, lists, integers, one_of
-from hypothesis.strategies import SearchStrategy
+from typing import List, Tuple, TypeVar, Union
 
-from .hashutil import ssk_storage_index_hash as _ssk_storage_index_hash, ssk_readkey_hash as _ssk_readkey_hash, storage_index_hash as _storage_index_hash
-from . import CHKRead, CHKDirectoryRead, SSKWrite, SSKDirectoryWrite, MDMFWrite, WriteCapability, ReadCapability, LiteralRead, VerifyCapability, Capability, CHKVerify, SSKRead, MDMFRead, SSKVerify, MDMFVerify, MDMFDirectoryWrite, SSKDirectoryWrite, LiteralDirectoryRead
+from hypothesis.strategies import (
+    SearchStrategy,
+    binary,
+    builds,
+    integers,
+    lists,
+    one_of,
+)
+
+from . import (
+    Capability,
+    CHKDirectoryRead,
+    CHKRead,
+    CHKVerify,
+    LiteralDirectoryRead,
+    LiteralRead,
+    MDMFDirectoryWrite,
+    MDMFRead,
+    MDMFVerify,
+    MDMFWrite,
+    ReadCapability,
+    SSKDirectoryWrite,
+    SSKRead,
+    SSKVerify,
+    SSKWrite,
+    VerifyCapability,
+    WriteCapability,
+)
+from .hashutil import ssk_readkey_hash as _ssk_readkey_hash
+from .hashutil import ssk_storage_index_hash as _ssk_storage_index_hash
+from .hashutil import storage_index_hash as _storage_index_hash
 
 _A = TypeVar("_A")
+
 
 def encoding_parameters() -> SearchStrategy[Tuple[int, int, int]]:
     """
@@ -32,6 +60,7 @@ def literal_reads() -> SearchStrategy[LiteralRead]:
         binary(min_size=0, max_size=55),
     )
 
+
 def chk_reads() -> SearchStrategy[CHKRead]:
     return builds(
         lambda key, uri_extension_hash, encoding: CHKRead(
@@ -46,6 +75,7 @@ def chk_reads() -> SearchStrategy[CHKRead]:
         binary(min_size=32, max_size=32),
         encoding_parameters(),
     )
+
 
 def ssk_writes() -> SearchStrategy[SSKWrite]:
     return builds(
@@ -63,6 +93,7 @@ def ssk_writes() -> SearchStrategy[SSKWrite]:
         binary(min_size=32, max_size=32),
     )
 
+
 def mdmf_writes() -> SearchStrategy[MDMFWrite]:
     return builds(
         lambda writekey, fingerprint: MDMFWrite(
@@ -79,37 +110,51 @@ def mdmf_writes() -> SearchStrategy[MDMFWrite]:
         binary(min_size=32, max_size=32),
     )
 
+
 def verify_capabilites() -> SearchStrategy[VerifyCapability]:
-    ro = one_of([
-        chk_reads(),
-        chk_reads().map(CHKDirectoryRead),
-        write_capabilities().map(lambda rw: rw.reader),
-    ])
+    ro = one_of(
+        [
+            chk_reads(),
+            chk_reads().map(CHKDirectoryRead),
+            write_capabilities().map(lambda rw: rw.reader),
+        ]
+    )
+
     def verifier(ro: Union[CHKRead, SSKRead, MDMFRead]) -> VerifyCapability:
         return ro.verifier
+
     verify = ro.map(verifier)
     return verify
 
+
 def read_capabilities() -> SearchStrategy[ReadCapability]:
-    return one_of([
-        literal_reads(),
-        literal_reads().map(LiteralDirectoryRead),
-        chk_reads(),
-        chk_reads().map(CHKDirectoryRead),
-        write_capabilities().map(lambda rw: rw.reader),
-    ])
+    return one_of(
+        [
+            literal_reads(),
+            literal_reads().map(LiteralDirectoryRead),
+            chk_reads(),
+            chk_reads().map(CHKDirectoryRead),
+            write_capabilities().map(lambda rw: rw.reader),
+        ]
+    )
+
 
 def write_capabilities() -> SearchStrategy[WriteCapability]:
-    return one_of([
-        ssk_writes(),
-        ssk_writes().map(SSKDirectoryWrite),
-        mdmf_writes(),
-        mdmf_writes().map(MDMFDirectoryWrite),
-    ])
+    return one_of(
+        [
+            ssk_writes(),
+            ssk_writes().map(SSKDirectoryWrite),
+            mdmf_writes(),
+            mdmf_writes().map(MDMFDirectoryWrite),
+        ]
+    )
+
 
 def capabilities() -> SearchStrategy[Capability]:
-    return one_of([
-        verify_capabilites(),
-        read_capabilities(),
-        write_capabilities(),
-    ])
+    return one_of(
+        [
+            verify_capabilites(),
+            read_capabilities(),
+            write_capabilities(),
+        ]
+    )
