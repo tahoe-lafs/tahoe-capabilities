@@ -19,7 +19,7 @@ jobs:
   codechecks:
     docker:
       # Run in a highly Nix-capable environment.
-      image: "nixos/nix:2.9.1"
+      - image: "nixos/nix:2.9.1"
 
     steps:
       - "run":
@@ -66,8 +66,7 @@ jobs:
         type: "string"
     docker:
       # Run in a highly Nix-capable environment.
-      - <<: *DOCKERHUB_AUTH
-        image: "nixos/nix:2.9.1"
+      - image: "nixos/nix:2.9.1"
 
     environment:
       # CACHIX_AUTH_TOKEN is manually set in the CircleCI web UI and
