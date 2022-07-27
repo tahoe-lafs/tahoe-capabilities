@@ -44,6 +44,11 @@ jobs:
       - "checkout"
 
       - "run":
+          name: "Prime Develop Environment"
+          command: |
+            nix develop --command true
+
+      - "run":
           name: "isort"
           command: |
             nix develop --command isort src
