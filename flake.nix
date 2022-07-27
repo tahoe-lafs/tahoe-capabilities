@@ -29,10 +29,10 @@
       pkgs = nixpkgs.legacyPackages.${system};
 
       # the Python version used by the default package
-      defaultPythonVersion = "python37";
+      defaultPythonVersion = "python39";
 
       # the Python versions for which packages are available
-      supportedPythonVersions = ["python37" "python38" "python39" ];
+      supportedPythonVersions = ["python37" "python38" "python39" "python310" "python311"];
 
     in rec {
       packages =
