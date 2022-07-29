@@ -28,6 +28,7 @@ from .types import (
     SSKRead,
     SSKVerify,
     SSKWrite,
+    ReadCapability,
     WriteCapability,
 )
 
@@ -210,6 +211,20 @@ def writeable_from_string(s: str) -> WriteCapability:
             },
         ),
     )
+
+
+def readable_from_string(s: str) -> ReadCapability:
+    return cast(
+        ReadCapability,
+        _uri_parser(
+            s,
+            {"LIT": _parse_literal,
+             "CHK": _parse_chk_read,
+             "SSK-RO": _parse_ssk_read,
+             "MDMF-RO": _parse_mdmf_write,
+             },
+            ),
+        )
 
 
 def immutable_readonly_from_string(s: str) -> ImmutableReadCapability:

@@ -293,8 +293,6 @@ ReadCapability = Union[
 WriteCapability = Union[
     SSKWrite,
     MDMFWrite,
-    SSKDirectoryWrite,
-    MDMFDirectoryWrite,
 ]
 
 DirectoryVerifyCapability = Union[

@@ -29,6 +29,7 @@ __all__ = [
     "Capability",
     # parser.py
     "NotRecognized",
+    "readable_from_string",
     "writeable_from_string",
     "writeable_directory_from_string",
     "readonly_directory_from_string",
@@ -54,6 +55,7 @@ from .parser import (
     readonly_directory_from_string,
     writeable_directory_from_string,
     writeable_from_string,
+    readable_from_string,
 )
 from .predicates import is_directory, is_mutable, is_read, is_verify, is_write
 from .serializer import danger_real_capability_string, digested_capability_string
