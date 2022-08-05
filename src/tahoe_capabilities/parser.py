@@ -139,9 +139,7 @@ def _parse_dir2_mdmf_verify(pieces: List[str]) -> MDMFDirectoryVerify:
 def _parse_ssk_write(pieces: List[str]) -> SSKWrite:
     writekey = _unb32str(pieces[0])
     fingerprint = _unb32str(pieces[1])
-    readkey = _ssk_readkey_hash(writekey)
-    storage_index = _ssk_storage_index_hash(readkey)
-    return SSKWrite(writekey, SSKRead(readkey, SSKVerify(storage_index, fingerprint)))
+    return SSKWrite.derive(writekey, fingerprint)
 
 
 def _parse_dir2_ssk_write(pieces: List[str]) -> SSKDirectoryWrite:

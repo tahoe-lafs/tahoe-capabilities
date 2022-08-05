@@ -2,6 +2,7 @@ from typing import Tuple, Union
 
 from attrs import field, frozen
 
+from .hashutil import ssk_storage_index_hash, ssk_readkey_hash
 
 @frozen
 class LiteralRead:
@@ -121,6 +122,11 @@ class SSKRead:
     prefix: str = "SSK-RO"
     suffix: Tuple[str, ...] = field(init=False, default=())
 
+    @classmethod
+    def derive(cls, readkey: bytes, fingerprint: bytes) -> "SSKRead":
+        storage_index = ssk_storage_index_hash(readkey)
+        return SSKRead(readkey, SSKVerify(storage_index, fingerprint))
+
     @property
     def secrets(self) -> Tuple[bytes, ...]:
         return (self.readkey, self.verifier.fingerprint)
@@ -132,6 +138,11 @@ class SSKWrite:
     reader: SSKRead
     prefix: str = "SSK"
     suffix: Tuple[str, ...] = field(init=False, default=())
+
+    @classmethod
+    def derive(cls, writekey: bytes, fingerprint: bytes) -> "SSKWrite":
+        readkey = ssk_readkey_hash(writekey)
+        return SSKWrite(writekey, SSKRead.derive(readkey, fingerprint))
 
     @property
     def secrets(self) -> Tuple[bytes, ...]:
