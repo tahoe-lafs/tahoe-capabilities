@@ -3,6 +3,9 @@ version: "2.1"
 workflows:
   test:
     jobs:
+      # Build a package on every run to be confident it still works.
+      - "build-wheel"
+
       - "unittests":
           matrix:
             parameters:
