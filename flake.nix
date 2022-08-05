@@ -43,12 +43,23 @@
           # Define tests alongside the packages because it's easier to pick
           # and choose which to run this way (as compared to making them all
           # "checks").
-          withDefault (packages // tests) defaultPythonVersion;
+          {
+            wheel = lib.toWheel self.packages.${system}.default;
+          } // withDefault (packages // tests) defaultPythonVersion;
 
       apps = {
         default = {
           type = "app";
           program = "${self.packages.${system}.default}/bin/tahoe";
+        };
+
+        twine = {
+          type = "app";
+          program =
+            let
+              twine-env = pkgs.python310.withPackages (ps: [ ps.twine ]);
+            in
+              "${twine-env}/bin/twine";
         };
       };
 

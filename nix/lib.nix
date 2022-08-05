@@ -120,4 +120,20 @@ rec {
   # setOf derivations -> str -> setOf derivations
   withDefault = packages: pythonVersion:
     packages // { default = packages.${packageName pythonVersion}; };
+
+  # Create a derivation for a Python wheel of the Python package in the given
+  # derivation.
+  #
+  # derivation -> derivation
+  toWheel = drv:
+    let
+      python-env = pkgs.python3.withPackages (ps: [ ps.setuptools ps.wheel ps.build ]);
+    in
+      pkgs.runCommand "${drv.name}-wheel" { }
+        ''
+        mkdir $out
+        cp -a ${drv.src} ./src
+        chmod --recursive u+w ./src
+        ${python-env}/bin/python -m build --no-isolation --outdir $out --wheel ./src
+        '';
 }
