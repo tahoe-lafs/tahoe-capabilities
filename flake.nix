@@ -1,7 +1,7 @@
 {
   description = "A library for working with Tahoe-LAFS capability values";
   inputs.nixpkgs = {
-    url = "github:NixOS/nixpkgs";
+    url = "github:NixOS/nixpkgs?ref=nixos-22.05";
   };
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.pypi-deps-db = {
@@ -29,10 +29,10 @@
       pkgs = nixpkgs.legacyPackages.${system};
 
       # the Python version used by the default package
-      defaultPythonVersion = "python39";
+      defaultPythonVersion = "python310";
 
       # the Python versions for which packages are available
-      supportedPythonVersions = ["python37" "python38" "python39"];
+      supportedPythonVersions = ["python37" "python38" "python39" "python310"];
 
     in rec {
       packages =
@@ -45,9 +45,11 @@
           # "checks").
           withDefault (packages // tests) defaultPythonVersion;
 
-      apps.default = {
-        type = "app";
-        program = "${self.packages.${system}.default}/bin/tahoe";
+      apps = {
+        default = {
+          type = "app";
+          program = "${self.packages.${system}.default}/bin/tahoe";
+        };
       };
 
       devShells =
