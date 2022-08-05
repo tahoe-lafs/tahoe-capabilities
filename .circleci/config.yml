@@ -269,4 +269,4 @@ jobs:
               exit 1
             fi
 
-            nix run .#twine upload --non-interactive release-workspace/*.whl
+            nix run .#twine -- upload --non-interactive release-workspace/*.whl
