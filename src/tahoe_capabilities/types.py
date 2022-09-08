@@ -2,7 +2,8 @@ from typing import Tuple, Union
 
 from attrs import field, frozen
 
-from .hashutil import ssk_storage_index_hash, ssk_readkey_hash
+from .hashutil import ssk_readkey_hash, ssk_storage_index_hash, storage_index_hash
+
 
 @frozen
 class LiteralRead:
@@ -49,6 +50,20 @@ class CHKRead:
     readkey: bytes = field(repr=False)
     verifier: CHKVerify
     prefix: str = "CHK"
+
+    @classmethod
+    def derive(
+        cls,
+        readkey: bytes,
+        uri_extension_hash: bytes,
+        needed: int,
+        total: int,
+        size: int,
+    ) -> "CHKRead":
+        storage_index = storage_index_hash(readkey)
+        return CHKRead(
+            readkey, CHKVerify(storage_index, uri_extension_hash, needed, total, size)
+        )
 
     @property
     def needed(self) -> int:
@@ -218,6 +233,11 @@ class MDMFRead:
     prefix: str = "MDMF-RO"
     suffix: Tuple[str, ...] = field(init=False, default=())
 
+    @classmethod
+    def derive(cls, readkey: bytes, fingerprint: bytes) -> "MDMFRead":
+        storage_index = ssk_storage_index_hash(readkey)
+        return MDMFRead(readkey, MDMFVerify(storage_index, fingerprint))
+
     @property
     def secrets(self) -> Tuple[bytes, ...]:
         return (self.readkey, self.verifier.fingerprint)
@@ -229,6 +249,11 @@ class MDMFWrite:
     reader: MDMFRead
     prefix: str = "MDMF"
     suffix: Tuple[str, ...] = field(init=False, default=())
+
+    @classmethod
+    def derive(cls, writekey: bytes, fingerprint: bytes) -> "MDMFWrite":
+        readkey = ssk_readkey_hash(writekey)
+        return MDMFWrite(writekey, MDMFRead.derive(readkey, fingerprint))
 
     @property
     def secrets(self) -> Tuple[bytes, ...]:

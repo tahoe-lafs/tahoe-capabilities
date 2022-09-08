@@ -1,9 +1,6 @@
 from base64 import b32decode as _b32decode
 from typing import Callable, Dict, List, TypeVar, cast
 
-from .hashutil import ssk_readkey_hash as _ssk_readkey_hash
-from .hashutil import ssk_storage_index_hash as _ssk_storage_index_hash
-from .hashutil import storage_index_hash as _storage_index_hash
 from .types import (
     Capability,
     CHKDirectoryRead,
@@ -22,13 +19,13 @@ from .types import (
     MDMFRead,
     MDMFVerify,
     MDMFWrite,
+    ReadCapability,
     SSKDirectoryRead,
     SSKDirectoryVerify,
     SSKDirectoryWrite,
     SSKRead,
     SSKVerify,
     SSKWrite,
-    ReadCapability,
     WriteCapability,
 )
 
@@ -66,16 +63,7 @@ def _parse_chk_read(pieces: List[str]) -> CHKRead:
     needed = int(pieces[2])
     total = int(pieces[3])
     size = int(pieces[4])
-    return CHKRead(
-        readkey,
-        CHKVerify(
-            _storage_index_hash(readkey),
-            uri_extension_hash,
-            needed,
-            total,
-            size,
-        ),
-    )
+    return CHKRead.derive(readkey, uri_extension_hash, needed, total, size)
 
 
 def _parse_dir2_chk_verify(pieces: List[str]) -> CHKDirectoryVerify:
@@ -103,8 +91,7 @@ def _parse_ssk_verify(pieces: List[str]) -> SSKVerify:
 def _parse_ssk_read(pieces: List[str]) -> SSKRead:
     readkey = _unb32str(pieces[0])
     fingerprint = _unb32str(pieces[1])
-    storage_index = _ssk_storage_index_hash(readkey)
-    return SSKRead(readkey, SSKVerify(storage_index, fingerprint))
+    return SSKRead.derive(readkey, fingerprint)
 
 
 def _parse_dir2_ssk_verify(pieces: List[str]) -> SSKDirectoryVerify:
@@ -124,8 +111,7 @@ def _parse_mdmf_verify(pieces: List[str]) -> MDMFVerify:
 def _parse_mdmf_read(pieces: List[str]) -> MDMFRead:
     readkey = _unb32str(pieces[0])
     fingerprint = _unb32str(pieces[1])
-    storage_index = _ssk_storage_index_hash(readkey)
-    return MDMFRead(readkey, MDMFVerify(storage_index, fingerprint))
+    return MDMFRead.derive(readkey, fingerprint)
 
 
 def _parse_dir2_mdmf_read(pieces: List[str]) -> MDMFDirectoryRead:
@@ -149,11 +135,7 @@ def _parse_dir2_ssk_write(pieces: List[str]) -> SSKDirectoryWrite:
 def _parse_mdmf_write(pieces: List[str]) -> MDMFWrite:
     writekey = _unb32str(pieces[0])
     fingerprint = _unb32str(pieces[1])
-    readkey = _ssk_readkey_hash(writekey)
-    storage_index = _ssk_storage_index_hash(readkey)
-    return MDMFWrite(
-        writekey, MDMFRead(readkey, MDMFVerify(storage_index, fingerprint))
-    )
+    return MDMFWrite.derive(writekey, fingerprint)
 
 
 def _parse_dir2_mdmf_write(pieces: List[str]) -> MDMFDirectoryWrite:
@@ -216,13 +198,14 @@ def readable_from_string(s: str) -> ReadCapability:
         ReadCapability,
         _uri_parser(
             s,
-            {"LIT": _parse_literal,
-             "CHK": _parse_chk_read,
-             "SSK-RO": _parse_ssk_read,
-             "MDMF-RO": _parse_mdmf_write,
-             },
-            ),
-        )
+            {
+                "LIT": _parse_literal,
+                "CHK": _parse_chk_read,
+                "SSK-RO": _parse_ssk_read,
+                "MDMF-RO": _parse_mdmf_write,
+            },
+        ),
+    )
 
 
 def immutable_readonly_from_string(s: str) -> ImmutableReadCapability:
