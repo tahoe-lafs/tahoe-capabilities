@@ -65,7 +65,7 @@
 
       devShells =
         withDefault
-          (devShellForVersions ["test"] supportedPythonVersions)
+          (devShellForVersions [] supportedPythonVersions)
           defaultPythonVersion;
     });
 }
