@@ -1,7 +1,11 @@
+from base64 import b32encode as _b32encode
 from operator import attrgetter
-from unittest import TestCase
+from testtools import TestCase
+from testtools.content import text_content
+from testtools.matchers import Equals, raises
 
 from hypothesis import assume, given
+from hypothesis.strategies import integers, binary
 
 from tahoe_capabilities import (
     Capability,
@@ -10,10 +14,102 @@ from tahoe_capabilities import (
     digested_capability_string,
 )
 from tahoe_capabilities.strategies import capabilities
+from tahoe_capabilities.parser import (
+    _sep,
+    _natural,
+    _key,
+    _lit,
+    _chk_params,
+    _chk,
+    ParseError,
+)
+
+
+def b32encode(bs: bytes) -> str:
+    return _b32encode(bs).lower().decode("ascii").rstrip("=")
 
 
 class ParseTests(TestCase):
     maxDiff = None
+
+    def test_sep(self) -> None:
+        """
+        ``_sep`` parses only ":".
+        """
+        self.expectThat(_sep.parse(":"), Equals(":"))
+        self.expectThat(lambda: _sep.parse("x"), raises(ParseError))
+
+    @given(integers(min_value=0))
+    def test_natural(self, n) -> None:
+        """
+        ``_natural`` parses non-negative integers.
+        """
+        self.assertThat(_natural.parse(str(n)), Equals(n))
+
+    def test_natural_fail(self) -> None:
+        """
+        ``_natural`` rejects strings that contain non-digits.
+        """
+        self.assertThat(lambda: _natural.parse("hello"), raises(ParseError))
+        self.assertThat(lambda: _natural.parse("-1"), raises(ParseError))
+
+    @given(binary(min_size=16, max_size=16))
+    def test_key(self, bs) -> None:
+        """
+        ``_key`` parses base32-encoded 128 bit strings.
+        """
+        self.assertThat(
+            _key.parse(b32encode(bs)),
+            Equals(bs),
+        )
+
+    @given(binary(max_size=15))
+    def test_key_fail(self, bs) -> None:
+        """
+        ``_key`` rejects strings shorter than 128 bits.
+        """
+        self.assertThat(
+            lambda: _key.parse(b32encode(bs)),
+            raises(ParseError),
+        )
+
+    @given(binary())
+    def test_lit(self, bs) -> None:
+        """
+        ``_lit`` parses base32-encoded strings of any length.
+        """
+        self.assertThat(
+            _lit.parse(b32encode(bs)),
+            Equals(bs),
+        )
+
+    @given(integers(min_value=1), integers(min_value=1), integers(min_value=1))
+    def test_chk_params(self, a, b, c) -> None:
+        """
+        ``_chk_params`` parses strings like::
+
+            <natural>:<natural>:<natural>
+        """
+        self.assertThat(
+            _chk_params.parse(f":{a}:{b}:{c}"),
+            Equals([a, b, c]),
+        )
+
+    @given(
+        binary(min_size=16, max_size=16),
+        binary(min_size=32, max_size=32),
+        integers(min_value=1),
+        integers(min_value=1),
+        integers(min_value=1),
+    )
+    def test_chk(self, key, ueh, a, b, c) -> None:
+        """
+        ``_chk`` parses a key, sep, uri hash extension, and chk parmaeters.
+        """
+        self.assertThat(
+            _chk.parse(f"{b32encode(key)}:" f"{b32encode(ueh)}:" f"{a}:{b}:{c}"),
+            Equals(((key, ueh), [a, b, c])),
+        )
 
     @given(capabilities())
     def test_from_string_roundtrip(self, cap: Capability) -> None:
@@ -22,6 +118,7 @@ class ParseTests(TestCase):
         ``danger_real_capability_string``.
         """
         cap_str = danger_real_capability_string(cap)
+        self.addDetail("cap", text_content(cap_str))
         cap_parsed = capability_from_string(cap_str)
         self.assertEqual(cap_parsed, cap)
 
@@ -108,8 +205,11 @@ class VectorTests(TestCase):
 
     def test_vector(self) -> None:
         for index, (description, start, transform, expected) in self.vector:
+            parsed = capability_from_string(start)
+            transformed = transform(parsed)
+            serialized = danger_real_capability_string(transformed)
             self.assertEqual(
-                danger_real_capability_string(transform(capability_from_string(start))),
+                serialized,
                 expected,
                 f"(#{index}) {description}({start}) != {expected}",
             )

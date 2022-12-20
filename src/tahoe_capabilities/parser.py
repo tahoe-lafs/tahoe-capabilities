@@ -1,5 +1,7 @@
 from base64 import b32decode as _b32decode
-from typing import Callable, Dict, List, TypeVar, cast
+from typing import Callable, Dict, List, TypeVar, cast, Optional
+
+from parsec import Parser, string, many1, many, digit, times, one_of, ParseError
 
 from .types import (
     Capability,
@@ -48,190 +50,34 @@ def _unb32str(s: str) -> bytes:
     return _b32decode(s.encode("ascii"))
 
 
-def _parse_chk_verify(pieces: List[str]) -> CHKVerify:
-    verifykey = _unb32str(pieces[0])
-    uri_extension_hash = _unb32str(pieces[1])
-    needed = int(pieces[2])
-    total = int(pieces[3])
-    size = int(pieces[4])
-    return CHKVerify(verifykey, uri_extension_hash, needed, total, size)
-
-
-def _parse_chk_read(pieces: List[str]) -> CHKRead:
-    readkey = _unb32str(pieces[0])
-    uri_extension_hash = _unb32str(pieces[1])
-    needed = int(pieces[2])
-    total = int(pieces[3])
-    size = int(pieces[4])
-    return CHKRead.derive(readkey, uri_extension_hash, needed, total, size)
-
-
-def _parse_dir2_chk_verify(pieces: List[str]) -> CHKDirectoryVerify:
-    return CHKDirectoryVerify(_parse_chk_verify(pieces))
-
-
-def _parse_dir2_chk_read(pieces: List[str]) -> CHKDirectoryRead:
-    return CHKDirectoryRead(_parse_chk_read(pieces))
-
-
-def _parse_literal(pieces: List[str]) -> LiteralRead:
-    return LiteralRead(_unb32str(pieces[0]))
-
-
-def _parse_dir2_literal_read(pieces: List[str]) -> LiteralDirectoryRead:
-    return LiteralDirectoryRead(_parse_literal(pieces))
-
-
-def _parse_ssk_verify(pieces: List[str]) -> SSKVerify:
-    storage_index = _unb32str(pieces[0])
-    fingerprint = _unb32str(pieces[1])
-    return SSKVerify(storage_index, fingerprint)
-
-
-def _parse_ssk_read(pieces: List[str]) -> SSKRead:
-    readkey = _unb32str(pieces[0])
-    fingerprint = _unb32str(pieces[1])
-    return SSKRead.derive(readkey, fingerprint)
-
-
-def _parse_dir2_ssk_verify(pieces: List[str]) -> SSKDirectoryVerify:
-    return SSKDirectoryVerify(_parse_ssk_verify(pieces))
-
-
-def _parse_dir2_ssk_read(pieces: List[str]) -> SSKDirectoryRead:
-    return SSKDirectoryRead(_parse_ssk_read(pieces))
-
-
-def _parse_mdmf_verify(pieces: List[str]) -> MDMFVerify:
-    storage_index = _unb32str(pieces[0])
-    fingerprint = _unb32str(pieces[1])
-    return MDMFVerify(storage_index, fingerprint)
-
-
-def _parse_mdmf_read(pieces: List[str]) -> MDMFRead:
-    readkey = _unb32str(pieces[0])
-    fingerprint = _unb32str(pieces[1])
-    return MDMFRead.derive(readkey, fingerprint)
-
-
-def _parse_dir2_mdmf_read(pieces: List[str]) -> MDMFDirectoryRead:
-    return MDMFDirectoryRead(_parse_mdmf_read(pieces))
-
-
-def _parse_dir2_mdmf_verify(pieces: List[str]) -> MDMFDirectoryVerify:
-    return MDMFDirectoryVerify(_parse_mdmf_verify(pieces))
-
-
-def _parse_ssk_write(pieces: List[str]) -> SSKWrite:
-    writekey = _unb32str(pieces[0])
-    fingerprint = _unb32str(pieces[1])
-    return SSKWrite.derive(writekey, fingerprint)
-
-
-def _parse_dir2_ssk_write(pieces: List[str]) -> SSKDirectoryWrite:
-    return SSKDirectoryWrite(_parse_ssk_write(pieces))
-
-
-def _parse_mdmf_write(pieces: List[str]) -> MDMFWrite:
-    writekey = _unb32str(pieces[0])
-    fingerprint = _unb32str(pieces[1])
-    return MDMFWrite.derive(writekey, fingerprint)
-
-
-def _parse_dir2_mdmf_write(pieces: List[str]) -> MDMFDirectoryWrite:
-    return MDMFDirectoryWrite(_parse_mdmf_write(pieces))
-
-
-_parsers: Dict[str, Callable[[List[str]], Capability]] = {
-    "LIT": _parse_literal,
-    "CHK-Verifier": _parse_chk_verify,
-    "CHK": _parse_chk_read,
-    "SSK-Verifier": _parse_ssk_verify,
-    "SSK-RO": _parse_ssk_read,
-    "SSK": _parse_ssk_write,
-    "MDMF-Verifier": _parse_mdmf_verify,
-    "MDMF-RO": _parse_mdmf_read,
-    "MDMF": _parse_mdmf_write,
-    "DIR2-LIT": _parse_dir2_literal_read,
-    "DIR2-CHK-Verifier": _parse_dir2_chk_verify,
-    "DIR2-CHK": _parse_dir2_chk_read,
-    "DIR2-Verifier": _parse_dir2_ssk_verify,
-    "DIR2-RO": _parse_dir2_ssk_read,
-    "DIR2": _parse_dir2_ssk_write,
-    "DIR2-MDMF-Verifier": _parse_dir2_mdmf_verify,
-    "DIR2-MDMF-RO": _parse_dir2_mdmf_read,
-    "DIR2-MDMF": _parse_dir2_mdmf_write,
-}
-
-_A = TypeVar("_A")
-
-
-def _uri_parser(s: str, parsers: Dict[str, Callable[[List[str]], _A]]) -> _A:
-    pieces = s.split(":")
-    if pieces[0] == "URI":
-        try:
-            parser = parsers[pieces[1]]
-        except KeyError:
-            raise NotRecognized(pieces[:2])
-        else:
-            return parser(pieces[2:])
-    raise NotRecognized(pieces[:1])
-
-
 def writeable_from_string(s: str) -> WriteCapability:
-    return cast(
-        WriteCapability,
-        _uri_parser(
-            s,
-            {
-                "SSK": _parse_ssk_write,
-                "MDMF": _parse_mdmf_write,
-                "DIR2": _parse_dir2_ssk_write,
-                "DIR2-MDMF": _parse_dir2_mdmf_write,
-            },
-        ),
+    cap = capability_from_string(s)
+    assert isinstance(
+        cap,
+        (SSKWrite, MDMFWrite, SSKDirectoryWrite, MDMFDirectoryWrite),
     )
+    return cap
 
 
 def readable_from_string(s: str) -> ReadCapability:
-    return cast(
-        ReadCapability,
-        _uri_parser(
-            s,
-            {
-                "LIT": _parse_literal,
-                "CHK": _parse_chk_read,
-                "SSK-RO": _parse_ssk_read,
-                "MDMF-RO": _parse_mdmf_write,
-            },
-        ),
+    cap = capability_from_string(s)
+    assert isinstance(
+        cap,
+        (SSKRead, MDMFRead, SSKDirectoryRead, MDMFDirectoryRead),
     )
+    return cap
 
 
 def immutable_readonly_from_string(s: str) -> ImmutableReadCapability:
-    return cast(
-        ImmutableReadCapability,
-        _uri_parser(
-            s,
-            {
-                "LIT": _parse_literal,
-                "CHK": _parse_chk_read,
-            },
-        ),
-    )
+    cap = capability_from_string(s)
+    assert isinstance(cap, (LiteralRead, CHKRead))
+    return cap
 
 
 def immutable_directory_from_string(s: str) -> ImmutableDirectoryReadCapability:
-    return cast(
-        ImmutableDirectoryReadCapability,
-        _uri_parser(
-            s,
-            {
-                "DIR2-LIT": _parse_dir2_literal_read,
-                "DIR2-CHK": _parse_dir2_chk_read,
-            },
-        ),
-    )
+    cap = capability_from_string(s)
+    assert isinstance(cap, (LiteralDirectoryRead, CHKDirectoryRead))
+    return cap
 
 
 def readonly_directory_from_string(s: str) -> DirectoryReadCapability:
@@ -242,16 +88,9 @@ def readonly_directory_from_string(s: str) -> DirectoryReadCapability:
     :raise ValueError: If the string represents a capability that is not
         read-only, is not for a mutable, or is not for a directory.
     """
-    return cast(
-        DirectoryReadCapability,
-        _uri_parser(
-            s,
-            {
-                "DIR2-RO": _parse_dir2_ssk_read,
-                "DIR2-MDMF-RO": _parse_dir2_mdmf_read,
-            },
-        ),
-    )
+    cap = capability_from_string(s)
+    assert isinstance(cap, (SSKDirectoryRead, MDMFDirectoryRead))
+    return cap
 
 
 def writeable_directory_from_string(s: str) -> DirectoryWriteCapability:
@@ -262,22 +101,123 @@ def writeable_directory_from_string(s: str) -> DirectoryWriteCapability:
     :raise ValueError: If the string represents a capability that is writeable
         or is not for a directory.
     """
-    return cast(
-        DirectoryWriteCapability,
-        _uri_parser(
-            s,
-            {
-                "DIR2": _parse_dir2_ssk_write,
-                "DIR2-MDMF": _parse_dir2_mdmf_write,
-            },
-        ),
+    cap = capability_from_string(s)
+    assert isinstance(cap, (SSKDirectoryWrite, MDMFDirectoryWrite))
+    return cap
+
+
+def _b32string(alphabet: str, exact_bits: Optional[int] = None) -> Parser:
+    if exact_bits is None:
+        return many(one_of(alphabet))
+
+    full, extra = divmod(exact_bits, 5)
+    stem = times(
+        one_of(alphabet),
+        full,
+        full,
+    )
+    if extra == 0:
+        return stem
+    return (stem + one_of("".join(set(_trailing_b32chars(alphabet, extra))))).parsecmap(
+        lambda xs_x: xs_x[0] + [xs_x[1]]
     )
 
 
-def capability_from_string(s: str) -> Capability:
-    pieces = s.split(":")
-    if pieces[0] == "URI":
-        parser = _parsers[pieces[1]]
-        return parser(pieces[2:])
+def b32string(exact_bits: Optional[int] = None) -> Parser:
+    # RFC3548 standard used by Gnutella, Content-Addressable Web, THEX, Bitzi,
+    # Web-Calculus...
+    rfc3548_alphabet = "abcdefghijklmnopqrstuvwxyz234567"
 
-    raise NotRecognized(pieces[:1])
+    return _b32string(rfc3548_alphabet, exact_bits).parsecmap(
+        lambda xs: _unb32str("".join(xs))
+    )
+
+
+def _trailing_b32chars(alphabet: str, bits: int) -> str:
+    stem = alphabet[:: 1 << bits]
+    if bits == 0:
+        return stem
+    return stem + _trailing_b32chars(alphabet, bits - 1)
+
+
+_sep = string(":")
+_natural = many1(digit()).parsecmap("".join).parsecmap(int)
+_key = b32string(128)
+_uri_extension_hash = b32string(256)
+
+_lit = b32string()
+
+_chk_params = times(_sep >> _natural, 3, 3)
+_chk = _key + (_sep >> _uri_extension_hash) + _chk_params
+
+# Tahoe-LAFS calls the components of SSK "storage_index" and "fingerprint" but
+# they are syntactically the same as "key" and "uri_extension_hash" from CHK.
+_ssk = _key + (_sep >> _uri_extension_hash)
+
+# And MDMF is syntactically compatible with SSK
+_mdmf = _ssk
+
+
+def _capability_parser() -> Parser:
+    lit_read = string("LIT:") >> _lit.parsecmap(LiteralRead)
+
+    def chk_glue(f):
+        def g(values):
+            ((key, uri_extension_hash), [a, b, c]) = values
+            return f(key, uri_extension_hash, a, b, c)
+
+        return g
+
+    chk_verify = string("CHK-Verifier:") >> _chk.parsecmap(chk_glue(CHKVerify))
+    chk = string("CHK:") >> _chk.parsecmap(chk_glue(CHKRead.derive))
+
+    ssk_verify = string("SSK-Verifier:") >> _ssk.parsecmap(lambda p: SSKVerify(*p))
+    ssk_read = string("SSK-RO:") >> _ssk.parsecmap(lambda p: SSKRead.derive(*p))
+    ssk = string("SSK:") >> _ssk.parsecmap(lambda p: SSKWrite.derive(*p))
+
+    mdmf_verify = string("MDMF-Verifier:") >> _mdmf.parsecmap(lambda p: MDMFVerify(*p))
+    mdmf_read = string("MDMF-RO:") >> _mdmf.parsecmap(lambda p: MDMFRead.derive(*p))
+    mdmf = string("MDMF:") >> _mdmf.parsecmap(lambda p: MDMFWrite.derive(*p))
+
+    def dir2(file_parser: Parser, dir_type: type) -> Parser:
+        return string("DIR2-") >> file_parser.parsecmap(dir_type)
+
+    return string("URI:") >> (
+        lit_read
+        ^ chk_verify
+        ^ chk
+        ^ ssk_verify
+        ^ ssk_read
+        ^ ssk
+        ^ mdmf_verify
+        ^ mdmf_read
+        ^ mdmf
+        # Directory variations, starting with ssk which breaks the pattern by
+        # leaving "SSK-" out.
+        ^ (
+            string("DIR2-Verifier:")
+            >> _ssk.parsecmap(lambda p: SSKDirectoryVerify(SSKVerify(*p)))
+        )
+        ^ (
+            string("DIR2-RO:")
+            >> _ssk.parsecmap(lambda p: SSKDirectoryRead(SSKRead.derive(*p)))
+        )
+        ^ (
+            string("DIR2:")
+            >> _ssk.parsecmap(lambda p: SSKDirectoryWrite(SSKWrite.derive(*p)))
+        )
+        # # And then the rest
+        ^ dir2(lit_read, LiteralDirectoryRead)
+        ^ dir2(chk_verify, CHKDirectoryVerify)
+        ^ dir2(chk, CHKDirectoryRead)
+        ^ dir2(mdmf_verify, MDMFDirectoryVerify)
+        ^ dir2(mdmf_read, MDMFDirectoryRead)
+        ^ dir2(mdmf, MDMFDirectoryWrite)
+    )
+
+
+_capability = _capability_parser()
+
+
+def capability_from_string(s: str) -> Capability:
+    return _capability.parse(s)
