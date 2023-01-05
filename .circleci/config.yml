@@ -4,7 +4,7 @@ workflows:
   test:
     jobs:
       # Build a package on every run to be confident it still works.
-      - "build-wheel"
+      - "build-artifacts"
 
       - "unittests":
           matrix:
@@ -23,7 +23,7 @@ workflows:
   # https://circleci.com/docs/2.0/workflows#executing-workflows-for-a-git-tag
   release:
     jobs:
-      - "build-wheel":
+      - "build-artifacts":
           # Documentation states there is a requirement to have a tag filter
           # on a job is required by another job with a tag filter.  Just
           # duplicate the pypi-upload job's tag filter so we don't run if no
@@ -47,13 +47,13 @@ workflows:
               ignore: "/.*/"
           repository: "pypi"
           requires:
-            - "build-wheel"
+            - "build-artifacts"
 
   # Like the `release` workflow but only run on release candidate tags and
   # upload to Test PyPI.  See `release` workflow for commentary.
   release-candidate:
     jobs:
-      - "build-wheel":
+      - "build-artifacts":
           filters:
             tags:
               only: "/^v\\d+\\.\\d+\\.\\d+a\\d+$/"
@@ -67,7 +67,7 @@ workflows:
               ignore: "/.*/"
           repository: "testpypi"
           requires:
-            - "build-wheel"
+            - "build-artifacts"
 
 jobs:
   codechecks:
@@ -191,7 +191,7 @@ jobs:
                 | grep -v '\.drv$' \
                 | cachix push $CACHIX_NAME
 
-  build-wheel:
+  build-artifacts:
     docker:
       # Run in a highly Nix-capable environment.
       - image: "nixos/nix:2.10.3"
@@ -215,18 +215,20 @@ jobs:
               -A cachix bash
       - "checkout"
       - run:
-          name: "Build Wheel"
+          name: "Build Artifacts"
           command: |
+            nix run  .#build -- -m build --sdist --no-isolation
             nix build .#wheel
             # Put the wheel in a regular directory so CircleCI doesn't get
             # confused by symlinks when it comes time to upload the wheel as
             # an artifact.
-            mkdir wheels
-            cp ./result/* wheels/
+            mkdir artifacts
+            cp ./result/* artifacts/
+            cp ./dist/tahoe-capabilities*.tar.gz artifacts/
       - store_artifacts:
-          path: "./wheels/"
+          path: "./artifacts/"
       - persist_to_workspace:
-          root: "./wheels/"
+          root: "./artifacts/"
           paths:
             - "*"
 
@@ -256,7 +258,7 @@ jobs:
           at: "release-workspace"
 
       - run:
-          name: "Upload Wheel"
+          name: "Upload Artifacts"
           command: |
             set -eux -o pipefail
 
@@ -269,4 +271,4 @@ jobs:
               exit 1
             fi
 
-            nix run .#twine -- upload --non-interactive release-workspace/*.whl
+            nix run .#twine -- upload --non-interactive artifacts/*.whl artifacts/tahoe-capabilities-*.tar.gz
