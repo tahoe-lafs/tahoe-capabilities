@@ -33,6 +33,7 @@
 
       # the Python versions for which packages are available
       supportedPythonVersions = ["python37" "python38" "python39" "python310"];
+      build-env = pkgs.${defaultPythonVersion}.withPackages (ps: [ ps.build ps.setuptools ps.wheel ]);
 
     in rec {
       packages =
@@ -48,6 +49,10 @@
           } // withDefault (packages // tests) defaultPythonVersion;
 
       apps = {
+        build = {
+          type = "app";
+          program = "${build-env}/bin/python"; #  -m build --sdist --no-isolation";
+        };
         default = {
           type = "app";
           program = "${self.packages.${system}.default}/bin/tahoe";
