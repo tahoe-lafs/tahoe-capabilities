@@ -255,7 +255,7 @@ jobs:
       - "checkout"
 
       - attach_workspace:
-          at: "release-workspace"
+          at: "artifacts"
 
       - run:
           name: "Upload Artifacts"
