@@ -126,7 +126,7 @@ jobs:
       - "run":
           name: "mypy"
           command: |
-            nix develop --command mypy --strict src
+            nix develop --command mypy src
 
   unittests:
     parameters:

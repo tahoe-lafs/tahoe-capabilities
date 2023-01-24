@@ -6,6 +6,7 @@ __all__ = [
     "ParseError",
 ]
 
+from typing import Callable, Type, TypeVar
 from base64 import b32decode as _b32decode
 
 from parsec import Parser, string, many1, many, digit, times, one_of, ParseError
@@ -38,6 +39,8 @@ from .types import (
     WriteCapability,
 )
 
+T = TypeVar("T")
+S = TypeVar("S")
 
 class NotRecognized(ValueError):
     def __init__(self, prefix: list[str]) -> None:
@@ -229,8 +232,8 @@ def _capability_parser() -> Parser[Capability]:
     """
     lit_read = string("LIT:") >> _lit.parsecmap(LiteralRead)
 
-    def chk_glue(f):
-        def g(values):
+    def chk_glue(f: Callable[[bytes, bytes, int, int, int], T]) -> Callable[[tuple[tuple[bytes, bytes], list[int]]], T]:
+        def g(values: tuple[tuple[bytes, bytes], list[int]]) -> T:
             ((key, uri_extension_hash), [a, b, c]) = values
             return f(key, uri_extension_hash, a, b, c)
 
@@ -247,7 +250,7 @@ def _capability_parser() -> Parser[Capability]:
     mdmf_read = string("MDMF-RO:") >> _ssk.parsecmap(lambda p: MDMFRead.derive(*p))
     mdmf = string("MDMF:") >> _ssk.parsecmap(lambda p: MDMFWrite.derive(*p))
 
-    def dir2(file_parser: Parser, dir_type: type) -> Parser:
+    def dir2(file_parser: Parser[T], dir_type: Callable[[T], S]) -> Parser[S]:
         return string("DIR2-") >> file_parser.parsecmap(dir_type)
 
     return string("URI:") >> (

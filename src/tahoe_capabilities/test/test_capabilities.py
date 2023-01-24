@@ -40,7 +40,7 @@ class ParseTests(TestCase):
         self.expectThat(lambda: _sep.parse("x"), raises(ParseError))
 
     @given(integers(min_value=0))
-    def test_natural(self, n) -> None:
+    def test_natural(self, n: int) -> None:
         """
         ``_natural`` parses non-negative integers.
         """
@@ -54,7 +54,7 @@ class ParseTests(TestCase):
         self.assertThat(lambda: _natural.parse("-1"), raises(ParseError))
 
     @given(binary(min_size=16, max_size=16))
-    def test_key(self, bs) -> None:
+    def test_key(self, bs: bytes) -> None:
         """
         ``_key`` parses base32-encoded 128 bit strings.
         """
@@ -64,7 +64,7 @@ class ParseTests(TestCase):
         )
 
     @given(binary(max_size=15))
-    def test_key_fail(self, bs) -> None:
+    def test_key_fail(self, bs: bytes) -> None:
         """
         ``_key`` rejects strings shorter than 128 bits.
         """
@@ -74,7 +74,7 @@ class ParseTests(TestCase):
         )
 
     @given(binary())
-    def test_lit(self, bs) -> None:
+    def test_lit(self, bs: bytes) -> None:
         """
         ``_lit`` parses base32-encoded strings of any length.
         """
@@ -84,11 +84,11 @@ class ParseTests(TestCase):
         )
 
     @given(integers(min_value=1), integers(min_value=1), integers(min_value=1))
-    def test_chk_params(self, a, b, c) -> None:
+    def test_chk_params(self, a: int, b: int, c: int) -> None:
         """
         ``_chk_params`` parses strings like::
 
-            <natural>:<natural>:<natural>
+            :<natural>:<natural>:<natural>
         """
         self.assertThat(
             _chk_params.parse(f":{a}:{b}:{c}"),
@@ -102,12 +102,12 @@ class ParseTests(TestCase):
         integers(min_value=1),
         integers(min_value=1),
     )
-    def test_chk(self, key, ueh, a, b, c) -> None:
+    def test_chk(self, key: bytes, ueh: bytes, a: int, b: int, c: int) -> None:
         """
         ``_chk`` parses a key, sep, uri hash extension, and chk parmaeters.
         """
         self.assertThat(
-            _chk.parse(f"{b32encode(key)}:" f"{b32encode(ueh)}:" f"{a}:{b}:{c}"),
+            _chk.parse(f"{b32encode(key)}:{b32encode(ueh)}:{a}:{b}:{c}"),
             Equals(((key, ueh), [a, b, c])),
         )
 
