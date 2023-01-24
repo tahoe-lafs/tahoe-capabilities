@@ -58,6 +58,9 @@ def _unb32str(s: str) -> bytes:
 
 
 def writeable_from_string(s: str) -> WriteCapability | DirectoryWriteCapability:
+    """
+    Parse a capability string into any kind of writeable object.
+    """
     cap = capability_from_string(s)
     assert isinstance(
         cap,
@@ -67,6 +70,9 @@ def writeable_from_string(s: str) -> WriteCapability | DirectoryWriteCapability:
 
 
 def readable_from_string(s: str) -> ReadCapability | DirectoryReadCapability:
+    """
+    Parse a capability string into any kind of readable object.
+    """
     cap = capability_from_string(s)
     assert isinstance(
         cap,
@@ -76,12 +82,19 @@ def readable_from_string(s: str) -> ReadCapability | DirectoryReadCapability:
 
 
 def immutable_readonly_from_string(s: str) -> ImmutableReadCapability:
+    """
+    Parse a capability string into any kind of readable, immutable object.
+    """
     cap = capability_from_string(s)
     assert isinstance(cap, (LiteralRead, CHKRead))
     return cap
 
 
 def immutable_directory_from_string(s: str) -> ImmutableDirectoryReadCapability:
+    """
+    Parse a capability string into any kind of readable, immutable
+    directory.
+    """
     cap = capability_from_string(s)
     assert isinstance(cap, (LiteralDirectoryRead, CHKDirectoryRead))
     return cap
