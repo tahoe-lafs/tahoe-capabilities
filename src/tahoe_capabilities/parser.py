@@ -7,7 +7,6 @@ __all__ = [
 ]
 
 from base64 import b32decode as _b32decode
-from typing import Callable, Dict, List, TypeVar, cast, Optional
 
 from parsec import Parser, string, many1, many, digit, times, one_of, ParseError
 
@@ -41,7 +40,7 @@ from .types import (
 
 
 class NotRecognized(ValueError):
-    def __init__(self, prefix: List[str]) -> None:
+    def __init__(self, prefix: list[str]) -> None:
         super().__init__(f"Unrecognized capability type {prefix}")
 
 
@@ -62,7 +61,7 @@ def writeable_from_string(s: str) -> WriteCapability:
     cap = capability_from_string(s)
     assert isinstance(
         cap,
-        (SSKWrite, MDMFWrite, SSKDirectoryWrite, MDMFDirectoryWrite),
+        (SSKWrite, MDMFWrite),
     )
     return cap
 
@@ -71,7 +70,7 @@ def readable_from_string(s: str) -> ReadCapability:
     cap = capability_from_string(s)
     assert isinstance(
         cap,
-        (SSKRead, MDMFRead, SSKDirectoryRead, MDMFDirectoryRead),
+        (SSKRead, MDMFRead),
     )
     return cap
 
@@ -114,7 +113,7 @@ def writeable_directory_from_string(s: str) -> DirectoryWriteCapability:
     return cap
 
 
-def _b32string(alphabet: str, exact_bits: Optional[int] = None) -> Parser[list[str]]:
+def _b32string(alphabet: str, exact_bits: None | int = None) -> Parser[list[str]]:
     """
     Parse a base32-encoded string.
 
@@ -143,7 +142,7 @@ def _b32string(alphabet: str, exact_bits: Optional[int] = None) -> Parser[list[s
     )
 
 
-def b32string(exact_bits: Optional[int] = None) -> Parser[bytes]:
+def b32string(exact_bits: None | int = None) -> Parser[bytes]:
     """
     Parse a base32-encoded string.
 

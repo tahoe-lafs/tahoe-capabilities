@@ -1,4 +1,6 @@
-from typing import Tuple, Union
+from __future__ import annotations
+
+from typing import Union
 
 from attrs import field, frozen
 
@@ -9,10 +11,10 @@ from .hashutil import ssk_readkey_hash, ssk_storage_index_hash, storage_index_ha
 class LiteralRead:
     data: bytes
     prefix: str = "LIT"
-    suffix: Tuple[str, ...] = field(init=False, default=())
+    suffix: tuple[str, ...] = field(init=False, default=())
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return (self.data,)
 
 
@@ -20,10 +22,10 @@ class LiteralRead:
 class LiteralDirectoryRead:
     cap_object: LiteralRead
     prefix: str = "DIR2-LIT"
-    suffix: Tuple[str, ...] = field(init=False, default=())
+    suffix: tuple[str, ...] = field(init=False, default=())
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return self.cap_object.secrets
 
 
@@ -37,11 +39,11 @@ class CHKVerify:
     prefix: str = "CHK-Verifier"
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return (self.storage_index, self.uri_extension_hash)
 
     @property
-    def suffix(self) -> Tuple[str, ...]:
+    def suffix(self) -> tuple[str, ...]:
         return (str(self.needed), str(self.total), str(self.size))
 
 
@@ -78,11 +80,11 @@ class CHKRead:
         return self.verifier.size
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return (self.readkey, self.verifier.uri_extension_hash)
 
     @property
-    def suffix(self) -> Tuple[str, ...]:
+    def suffix(self) -> tuple[str, ...]:
         return self.verifier.suffix
 
 
@@ -92,11 +94,11 @@ class CHKDirectoryVerify:
     prefix: str = "DIR2-CHK-Verifier"
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return self.cap_object.secrets
 
     @property
-    def suffix(self) -> Tuple[str, ...]:
+    def suffix(self) -> tuple[str, ...]:
         return self.cap_object.suffix
 
 
@@ -110,11 +112,11 @@ class CHKDirectoryRead:
         return CHKDirectoryVerify(self.cap_object.verifier)
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return self.cap_object.secrets
 
     @property
-    def suffix(self) -> Tuple[str, ...]:
+    def suffix(self) -> tuple[str, ...]:
         return self.cap_object.suffix
 
 
@@ -123,10 +125,10 @@ class SSKVerify:
     storage_index: bytes
     fingerprint: bytes
     prefix: str = "SSK-Verifier"
-    suffix: Tuple[str, ...] = field(init=False, default=())
+    suffix: tuple[str, ...] = field(init=False, default=())
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return (self.storage_index, self.fingerprint)
 
 
@@ -135,7 +137,7 @@ class SSKRead:
     readkey: bytes = field(repr=False)
     verifier: SSKVerify
     prefix: str = "SSK-RO"
-    suffix: Tuple[str, ...] = field(init=False, default=())
+    suffix: tuple[str, ...] = field(init=False, default=())
 
     @classmethod
     def derive(cls, readkey: bytes, fingerprint: bytes) -> "SSKRead":
@@ -143,7 +145,7 @@ class SSKRead:
         return SSKRead(readkey, SSKVerify(storage_index, fingerprint))
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return (self.readkey, self.verifier.fingerprint)
 
 
@@ -152,7 +154,7 @@ class SSKWrite:
     writekey: bytes = field(repr=False)
     reader: SSKRead
     prefix: str = "SSK"
-    suffix: Tuple[str, ...] = field(init=False, default=())
+    suffix: tuple[str, ...] = field(init=False, default=())
 
     @classmethod
     def derive(cls, writekey: bytes, fingerprint: bytes) -> "SSKWrite":
@@ -160,7 +162,7 @@ class SSKWrite:
         return SSKWrite(writekey, SSKRead.derive(readkey, fingerprint))
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return (self.writekey, self.reader.verifier.fingerprint)
 
 
@@ -170,11 +172,11 @@ class SSKDirectoryVerify:
     prefix: str = "DIR2-Verifier"
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return self.cap_object.secrets
 
     @property
-    def suffix(self) -> Tuple[str, ...]:
+    def suffix(self) -> tuple[str, ...]:
         return self.cap_object.suffix
 
 
@@ -188,11 +190,11 @@ class SSKDirectoryRead:
         return SSKDirectoryVerify(self.cap_object.verifier)
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return self.cap_object.secrets
 
     @property
-    def suffix(self) -> Tuple[str, ...]:
+    def suffix(self) -> tuple[str, ...]:
         return self.cap_object.suffix
 
 
@@ -206,11 +208,11 @@ class SSKDirectoryWrite:
         return SSKDirectoryRead(self.cap_object.reader)
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return self.cap_object.secrets
 
     @property
-    def suffix(self) -> Tuple[str, ...]:
+    def suffix(self) -> tuple[str, ...]:
         return self.cap_object.suffix
 
 
@@ -219,10 +221,10 @@ class MDMFVerify:
     storage_index: bytes
     fingerprint: bytes
     prefix: str = "MDMF-Verifier"
-    suffix: Tuple[str, ...] = field(init=False, default=())
+    suffix: tuple[str, ...] = field(init=False, default=())
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return (self.storage_index, self.fingerprint)
 
 
@@ -231,7 +233,7 @@ class MDMFRead:
     readkey: bytes = field(repr=False)
     verifier: MDMFVerify
     prefix: str = "MDMF-RO"
-    suffix: Tuple[str, ...] = field(init=False, default=())
+    suffix: tuple[str, ...] = field(init=False, default=())
 
     @classmethod
     def derive(cls, readkey: bytes, fingerprint: bytes) -> "MDMFRead":
@@ -239,7 +241,7 @@ class MDMFRead:
         return MDMFRead(readkey, MDMFVerify(storage_index, fingerprint))
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return (self.readkey, self.verifier.fingerprint)
 
 
@@ -248,7 +250,7 @@ class MDMFWrite:
     writekey: bytes = field(repr=False)
     reader: MDMFRead
     prefix: str = "MDMF"
-    suffix: Tuple[str, ...] = field(init=False, default=())
+    suffix: tuple[str, ...] = field(init=False, default=())
 
     @classmethod
     def derive(cls, writekey: bytes, fingerprint: bytes) -> "MDMFWrite":
@@ -256,7 +258,7 @@ class MDMFWrite:
         return MDMFWrite(writekey, MDMFRead.derive(readkey, fingerprint))
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return (self.writekey, self.reader.verifier.fingerprint)
 
 
@@ -266,11 +268,11 @@ class MDMFDirectoryVerify:
     prefix: str = "DIR2-MDMF-Verifier"
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return self.cap_object.secrets
 
     @property
-    def suffix(self) -> Tuple[str, ...]:
+    def suffix(self) -> tuple[str, ...]:
         return self.cap_object.suffix
 
 
@@ -284,11 +286,11 @@ class MDMFDirectoryRead:
         return MDMFDirectoryVerify(self.cap_object.verifier)
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return self.cap_object.secrets
 
     @property
-    def suffix(self) -> Tuple[str, ...]:
+    def suffix(self) -> tuple[str, ...]:
         return self.cap_object.suffix
 
 
@@ -302,11 +304,11 @@ class MDMFDirectoryWrite:
         return MDMFDirectoryRead(self.cap_object.reader)
 
     @property
-    def secrets(self) -> Tuple[bytes, ...]:
+    def secrets(self) -> tuple[bytes, ...]:
         return self.cap_object.secrets
 
     @property
-    def suffix(self) -> Tuple[str, ...]:
+    def suffix(self) -> tuple[str, ...]:
         return self.cap_object.suffix
 
 
