@@ -204,6 +204,11 @@ class VectorTests(TestCase):
     )
 
     def test_vector(self) -> None:
+        """
+        Certain known-valid capability strings can be parsed, diminished,
+        and serialized to the correct known-valid diminished capability
+        strings.
+        """
         for index, (description, start, transform, expected) in self.vector:
             parsed = capability_from_string(start)
             transformed = transform(parsed)
