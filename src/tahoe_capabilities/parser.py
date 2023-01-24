@@ -57,20 +57,20 @@ def _unb32str(s: str) -> bytes:
     return _b32decode(s.encode("ascii"))
 
 
-def writeable_from_string(s: str) -> WriteCapability:
+def writeable_from_string(s: str) -> WriteCapability | DirectoryWriteCapability:
     cap = capability_from_string(s)
     assert isinstance(
         cap,
-        (SSKWrite, MDMFWrite),
+        (SSKWrite, MDMFWrite, SSKDirectoryWrite, MDMFDirectoryWrite),
     )
     return cap
 
 
-def readable_from_string(s: str) -> ReadCapability:
+def readable_from_string(s: str) -> ReadCapability | DirectoryReadCapability:
     cap = capability_from_string(s)
     assert isinstance(
         cap,
-        (SSKRead, MDMFRead),
+        (SSKRead, MDMFRead, LiteralDirectoryRead, CHKDirectoryRead, SSKDirectoryRead, MDMFDirectoryRead),
     )
     return cap
 
