@@ -29,7 +29,7 @@ def b32encode(bs: bytes) -> str:
     return _b32encode(bs).lower().decode("ascii").rstrip("=")
 
 
-class ParseTests(TestCase):
+class ParseTests(TestCase): # type: ignore[misc]
     maxDiff = None
 
     def test_sep(self) -> None:
@@ -161,7 +161,7 @@ verifier = attrgetter("verifier")
 reader = attrgetter("reader")
 
 
-class VectorTests(TestCase):
+class VectorTests(TestCase): # type: ignore[misc]
     """
     Test Tahoe-Capabilities behavior on hard-coded values against
     known-correct test vectors extracted from Tahoe-LAFS.
